@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Badge from '../components/ui/Badge';
 import Avatar from '../components/ui/Avatar';
@@ -8,6 +8,7 @@ import { Users, ListChecks, Calendar, ArrowLeft, Info, User } from 'lucide-react
 export default function ProjectDetail() {
   const { id } = useParams();
   const [project, setProject] = useState<any>(null);
+  const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const token = localStorage.getItem('token');
 
@@ -20,6 +21,17 @@ export default function ProjectDetail() {
       .then(data => setProject(data.project || data.data || null))
       .catch(() => setProject(null))
       .finally(() => setLoading(false));
+  }, [id, token]);
+
+  // Fetch tasks separately so we have populated assignee info
+  useEffect(() => {
+    if (!id) return;
+    fetch(`http://localhost:5000/api/tasks/project/${id}`, {
+      headers: { Authorization: token ? `Bearer ${token}` : '' }
+    })
+      .then(res => res.json())
+      .then(data => setTasks(data.data || data.tasks || []))
+      .catch(() => setTasks([]));
   }, [id, token]);
 
   if (loading) return <div className="py-12 text-center"><span className="text-lg">Loading...</span></div>;
@@ -49,29 +61,88 @@ export default function ProjectDetail() {
         <div className="mb-8">
           <h2 className="text-lg font-semibold mb-2 flex items-center gap-2"><Users className="h-5 w-5 text-blue-500" /> Team Members</h2>
           <div className="flex flex-wrap gap-2 items-center">
-            {project.members && project.members.length > 0 ? project.members.map((member: any, i: number) => (
-              <div key={i} className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded px-3 py-1">
-                <Avatar name={member.name || 'User'} size="sm" className="border-2 border-white dark:border-gray-800" />
-                <span className="text-sm font-medium">{member.name}</span>
-                {member.role && <span className="text-xs text-gray-500">({member.role})</span>}
+            {/* Show owner first if populated */}
+            {project.owner && (
+              <div key={`owner-${project.owner._id || project.owner.id || 'owner'}`} className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded px-3 py-1">
+                <Avatar src={project.owner.avatar} name={project.owner.name || 'Owner'} size="sm" className="border-2 border-white dark:border-gray-800" />
+                <span className="text-sm font-medium">{project.owner.name || 'Owner'}</span>
+                <span className="text-xs text-gray-500">(Owner)</span>
               </div>
-            )) : <span className="text-sm text-gray-500">No members assigned.</span>}
+            )}
+
+            {project.members && project.members.length > 0 ? (
+              project.members.map((member: any, i: number) => {
+                // member may be populated as { user: {name,...}, role } or a flat user object
+                const user = member.user || member;
+                const name = user?.name || 'User';
+                const avatar = user?.avatar;
+                const role = member.role || (member.user?.role) || '';
+                return (
+                  <div key={user._id || user.id || i} className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded px-3 py-1">
+                    <Avatar src={avatar} name={name} size="sm" className="border-2 border-white dark:border-gray-800" />
+                    <span className="text-sm font-medium">{name}</span>
+                    {role && <span className="text-xs text-gray-500">({role})</span>}
+                  </div>
+                );
+              })
+            ) : (
+              // If there are no members in the members array, but owner exists we already showed owner
+              (!project.owner ? <span className="text-sm text-gray-500">No members assigned.</span> : null)
+            )}
           </div>
         </div>
 
         <div className="mb-8">
           <h2 className="text-lg font-semibold mb-2 flex items-center gap-2"><ListChecks className="h-5 w-5 text-green-500" /> Tasks</h2>
-          {project.tasks && project.tasks.length > 0 ? (
+          {tasks && tasks.length > 0 ? (
             <ul className="space-y-2">
-              {project.tasks.map((task: any) => (
-                <li key={task._id || task.id} className="p-3 rounded bg-gray-100 dark:bg-gray-800 flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-primary-500" />
-                    <span>{task.title}</span>
-                  </div>
-                  <Badge>{task.status}</Badge>
-                </li>
-              ))}
+              {tasks.map((task: any) => {
+                // compute a robust id from several possible shapes returned by the API or mock data
+                const rawId = task._id ?? task.id ?? (task._doc && (task._doc._id ?? task._doc.id));
+                const nestedOid = rawId && rawId.$oid ? rawId.$oid : undefined;
+                const tid = (typeof rawId === 'string' && rawId) || (rawId && rawId.toString && rawId.toString()) || nestedOid || undefined;
+
+                return (
+                  <li key={tid || task._id || task.id} className="p-3 rounded bg-gray-100 dark:bg-gray-800 flex justify-between items-center">
+                    {tid ? (
+                      <Link to={`/tasks/${encodeURIComponent(tid)}`} className="flex items-center gap-3 no-underline text-inherit">
+                        <User className="h-4 w-4 text-primary-500" />
+                        <div className="flex flex-col">
+                          <span className="font-medium">{task.title}</span>
+                          <div className="text-xs text-gray-500 flex items-center gap-2">
+                            {task.assignee ? (
+                              <>
+                                <Avatar name={task.assignee.name || 'User'} size="xs" />
+                                <span>Assigned to {task.assignee.name}</span>
+                              </>
+                            ) : (
+                              <span>Unassigned</span>
+                            )}
+                          </div>
+                        </div>
+                      </Link>
+                    ) : (
+                      <div className="flex items-center gap-3">
+                        <User className="h-4 w-4 text-primary-500" />
+                        <div className="flex flex-col">
+                          <span className="font-medium">{task.title}</span>
+                          <div className="text-xs text-gray-500 flex items-center gap-2">
+                            {task.assignee ? (
+                              <>
+                                <Avatar name={task.assignee.name || 'User'} size="xs" />
+                                <span>Assigned to {task.assignee.name}</span>
+                              </>
+                            ) : (
+                              <span>Unassigned</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <Badge>{task.status}</Badge>
+                  </li>
+                );
+              })}
             </ul>
           ) : <span className="text-sm text-gray-500">No tasks for this project.</span>}
         </div>

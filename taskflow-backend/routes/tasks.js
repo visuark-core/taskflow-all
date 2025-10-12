@@ -19,15 +19,16 @@ router
   .route('/')
   .post(createTask);
 
+// Specific routes first to avoid collisions with the param route
+router.get('/project/:projectId', getTasks);
+router.post('/:id/comments', addComment);
+router.put('/reorder', reorderTasks);
+
 router
   .route('/:id')
   .get(getTask)
   .put(updateTask)
   .delete(deleteTask);
-
-router.get('/project/:projectId', getTasks);
-router.post('/:id/comments', addComment);
-router.put('/reorder', reorderTasks);
 
 module.exports = router;
 

@@ -1,11 +1,10 @@
 import { Link } from 'react-router-dom';
-import { Task } from '../../data/mockData';
 import { formatDate, getPriorityColor, getStatusColor } from '../../lib/utils';
 import Avatar from '../ui/Avatar';
 import { MessageSquare, Paperclip, Clock } from 'lucide-react';
 
 interface TaskCardProps {
-  task: Task;
+  task: any; // using any because API returns tasks with _id and different shapes
 }
 
 export default function TaskCard({ task }: TaskCardProps) {
@@ -14,7 +13,7 @@ export default function TaskCard({ task }: TaskCardProps) {
       <div className="p-4">
         <div className="flex items-start justify-between">
           <Link 
-            to={`/tasks/${task.id}`}
+            to={`/tasks/${task._id || task.id}`}
             className="font-medium hover:text-primary-600 dark:hover:text-primary-400"
           >
             {task.title}

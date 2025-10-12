@@ -1,15 +1,15 @@
 import { useState } from 'react';
-import { Task } from '../../data/mockData';
 import { Plus } from 'lucide-react';
 import TaskCard from '../dashboard/TaskCard';
 
 interface KanbanColumnProps {
   title: string;
-  tasks: Task[];
+  tasks: any[];
   columnId: string;
+  onMove?: () => void;
 }
 
-export default function KanbanColumn({ title, tasks, columnId }: KanbanColumnProps) {
+export default function KanbanColumn({ title, tasks, columnId, onMove }: KanbanColumnProps) {
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   
   const handleDragOver = (e: React.DragEvent) => {
@@ -21,13 +21,46 @@ export default function KanbanColumn({ title, tasks, columnId }: KanbanColumnPro
     setIsDraggingOver(false);
   };
   
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     setIsDraggingOver(false);
-    
-    const taskId = e.dataTransfer.getData('text/plain');
-    console.log(`Dropped task ${taskId} onto column ${columnId}`);
-    // Handle task status update logic here
+
+    const payload = e.dataTransfer.getData('application/json') || e.dataTransfer.getData('text/plain');
+    let info;
+    try {
+      info = JSON.parse(payload);
+    } catch (err) {
+      info = { taskId: payload };
+    }
+
+    const { taskId, fromStatus } = info;
+    if (!taskId) return;
+
+    // Only allow forward progress: todo -> in-progress -> review -> done
+    const order = ['todo', 'in-progress', 'review', 'done'];
+    const fromIndex = order.indexOf(fromStatus || 'todo');
+    const toIndex = order.indexOf(columnId);
+    if (toIndex === -1) return; // unknown column
+    // disallow backward moves
+    if (toIndex <= fromIndex) return;
+
+    // call API to reorder (backend endpoint: PUT /api/tasks/reorder)
+    const base = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    try {
+      await fetch(`${base}/tasks/reorder`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ taskId, newStatus: columnId, newPosition: 0 })
+      });
+
+      // notify parent to refresh
+      if (typeof onMove === 'function') onMove();
+    } catch (err) {
+      // ignore
+    }
   };
 
   return (
@@ -55,17 +88,22 @@ export default function KanbanColumn({ title, tasks, columnId }: KanbanColumnPro
           isDraggingOver ? 'bg-primary-50 dark:bg-primary-900/20' : ''
         }`}
       >
-        {tasks.map((task) => (
-          <div
-            key={task.id}
-            draggable
-            onDragStart={(e) => {
-              e.dataTransfer.setData('text/plain', task.id);
-            }}
-          >
-            <TaskCard task={task} />
-          </div>
-        ))}
+        {tasks.map((task) => {
+          const tid = task._id || task.id || (task._doc && (task._doc._id || task._doc.id));
+          const fromStatus = (task.status && (task.status.toLowerCase())) || 'todo';
+          return (
+            <div
+              key={tid || task.id}
+              draggable
+              onDragStart={(e) => {
+                const data = JSON.stringify({ taskId: tid || task.id, fromStatus });
+                e.dataTransfer.setData('application/json', data);
+              }}
+            >
+              <TaskCard task={task} />
+            </div>
+          );
+        })}
         
         {tasks.length === 0 && (
           <div className="flex flex-1 items-center justify-center">

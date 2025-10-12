@@ -8,6 +8,7 @@ import type { RootState } from '../app/store';
 
 export default function Team() {
   const token = useSelector((state: RootState) => state.auth.token);
+  const currentUser = useSelector((state: RootState) => state.auth.user);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -95,7 +96,22 @@ export default function Team() {
   };
 
   // Sort users so that admins appear first
-  const sortedUsers = [...users].sort((a, b) => {
+  // Helper to normalize department value
+  const getDept = (u: any) => u?.department?.name || u?.department || '';
+
+  // Filter visible users based on current user's role
+  let visibleUsers = users;
+  if (currentUser?.role === 'admin') {
+    // Admins see only managers across all departments
+    visibleUsers = users.filter(u => u.role === 'manager');
+  } else if (currentUser?.role === 'manager') {
+    // Managers see other members of their own department
+    const myDept = getDept(currentUser);
+    visibleUsers = users.filter(u => getDept(u) === myDept && (u._id || u.id) !== (currentUser._id || currentUser.id));
+  }
+
+  // Sort visible users so that admins appear first (if any)
+  const sortedUsers = [...visibleUsers].sort((a, b) => {
     if (a.role === 'admin' && b.role !== 'admin') return -1;
     if (a.role !== 'admin' && b.role === 'admin') return 1;
     return 0;

@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
 import ProjectDetail from './pages/ProjectDetail';
 import Tasks from './pages/Tasks';
+import TaskDetail from './pages/TaskDetail';
 import Team from './pages/Team';
 import MemberDetail from './pages/MemberDetail';
 import Calendar from './pages/Calendar';
@@ -49,6 +50,7 @@ function App() {
           <Route path="projects" element={<Projects />} />
           <Route path="projects/:id" element={<ProjectDetail />} />
           <Route path="tasks" element={<Tasks />} />
+          <Route path="tasks/:id" element={<TaskDetail />} />
           <Route path="team" element={<Team />} />
           <Route path="team/:id" element={<MemberDetail />} />
           <Route path="calendar" element={<Calendar />} />

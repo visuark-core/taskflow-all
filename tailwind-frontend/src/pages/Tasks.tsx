@@ -8,10 +8,10 @@ import NewTaskModal from '../components/modals/NewTaskModal';
 export default function Tasks() {
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const [view, setView] = useState<'grid' | 'list'>('grid');
+  // filter keys: 'all', 'todo', 'in-progress', 'review', 'done'
   const [filter, setFilter] = useState('all');
   const [tasks, setTasks] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
-  const [selectedProject, setSelectedProject] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const token = localStorage.getItem('token');
   // Fetch projects on mount
@@ -27,8 +27,6 @@ export default function Tasks() {
         const data = await res.json();
         if (data.success) {
           setProjects(data.data);
-          // Select first project by default
-          if (data.data.length > 0) setSelectedProject(data.data[0]._id || data.data[0].id);
         }
       } catch (err) {
         // handle error
@@ -39,37 +37,66 @@ export default function Tasks() {
     fetchProjects();
   }, []);
 
-  // Fetch tasks when selectedProject changes
-  React.useEffect(() => {
-    if (!selectedProject) return;
-    setLoading(true);
-    async function fetchTasks() {
-      try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/tasks/project/${selectedProject}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        const data = await res.json();
-        if (data.success) {
-          setTasks(data.data);
-        }
-      } catch (err) {
-        // handle error
-      } finally {
-        setLoading(false);
-      }
+  // Fetch all tasks across projects
+  const fetchAllTasks = React.useCallback(async () => {
+    if (!projects || projects.length === 0) {
+      setTasks([]);
+      return;
     }
-    fetchTasks();
-  }, [selectedProject]);
+    setLoading(true);
+    try {
+      const base = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const responses = await Promise.allSettled(projects.map((p: any) =>
+        fetch(`${base}/tasks/project/${p._id || p.id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      ));
+
+      const allTasks: any[] = [];
+      for (const r of responses) {
+        if (r.status === 'fulfilled') {
+          try {
+            const json = await r.value.json();
+            const data = json.data || json.tasks || [];
+            allTasks.push(...data);
+          } catch (e) {
+            // ignore parse errors per project
+          }
+        }
+      }
+      setTasks(allTasks);
+    } catch (err) {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  }, [projects, token]);
+
+  // Refresh tasks when projects list changes
+  React.useEffect(() => {
+    fetchAllTasks();
+  }, [projects, fetchAllTasks]);
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
   
+  // normalize status values coming from backend (different casings/labels)
+  const normalizeStatus = (s: any) => {
+    if (!s && s !== 0) return '';
+    const status = String(s).toLowerCase();
+    if (status === 'todo' || status === 'to do' || status === 'to-do') return 'todo';
+    if (status === 'inprogress' || status === 'in-progress' || status === 'in progress' || status === 'in_progress') return 'in-progress';
+    if (status === 'review') return 'review';
+    if (status === 'done' || status === 'completed' || status === 'complete') return 'done';
+    return status;
+  };
+
   const filteredTasks = filter === 'all'
     ? tasks
-    : tasks.filter(task => task.status === filter);
+    : tasks.filter(task => normalizeStatus(task.status) === filter);
 
   const handleNewTask = () => {
     setIsNewTaskModalOpen(false);
+    // Refresh the task list after creating a new task
+    fetchAllTasks();
   };
 
   return (
@@ -97,7 +124,7 @@ export default function Tasks() {
       {/* Filters and search */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap gap-2">
-          {['all', 'to-do', 'in-progress', 'review', 'completed'].map((status) => (
+          {['all', 'todo', 'in-progress', 'review', 'done'].map((status) => (
             <button
               key={status}
               className={`rounded-md px-3 py-1.5 text-sm font-medium ${
@@ -109,7 +136,7 @@ export default function Tasks() {
             >
               {status === 'all' 
                 ? 'All' 
-                : status.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                : status === 'todo' ? 'To Do' : status === 'in-progress' ? 'In Progress' : status === 'review' ? 'Review' : 'Completed'}
             </button>
           ))}
         </div>
@@ -148,26 +175,7 @@ export default function Tasks() {
         </div>
       </div>
 
-      {/* Project selector */}
-      {projects.length === 0 ? (
-        <div className="py-12 text-center">
-          <span className="text-lg">No projects found.</span>
-          <div className="mt-4">
-            <button className="btn btn-primary" onClick={() => setIsNewProjectModalOpen(true)}>
-              Create Project
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Project</label>
-          <select value={selectedProject} onChange={e => setSelectedProject(e.target.value)} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700">
-            {projects.map(project => (
-              <option key={project._id || project.id} value={project._id || project.id}>{project.name}</option>
-            ))}
-          </select>
-        </div>
-      )}
+      {/* No project filter - show all tasks across projects */}
       {loading ? (
         <div className="py-12 text-center">
           <span className="text-lg">Loading...</span>
@@ -214,9 +222,22 @@ export default function Tasks() {
                     </div>
                   </td>
                   <td className="whitespace-nowrap px-6 py-4">
-                    <Badge className={task.status === 'Completed' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : task.status === 'In Progress' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'}>
-                      {task.status}
-                    </Badge>
+                    {(() => {
+                      const s = normalizeStatus(task.status);
+                      const label = s === 'todo' ? 'To Do' : s === 'in-progress' ? 'In Progress' : s === 'review' ? 'Review' : s === 'done' ? 'Completed' : task.status;
+                      const className = s === 'done'
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                        : s === 'in-progress'
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
+                          : s === 'review'
+                            ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
+                            : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200';
+                      return (
+                        <Badge className={className}>
+                          {label}
+                        </Badge>
+                      );
+                    })()}
                   </td>
                   <td className="whitespace-nowrap px-6 py-4">
                     <Badge className={task.priority === 'High' || task.priority === 'Critical' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'}>
