@@ -10,10 +10,6 @@ import Team from './pages/Team';
 import MemberDetail from './pages/MemberDetail';
 import Departments from './pages/Departments';
 import UserManagement from './pages/UserManagement';
-import CEODashboard from './pages/CEODashboard';
-import CFODashboard from './pages/CFODashboard';
-import CTODashboard from './pages/CTODashboard';
-import CMODashboard from './pages/CMODashboard';
 import Calendar from './pages/Calendar';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
@@ -64,10 +60,6 @@ function App() {
           <Route path="team/:id" element={<MemberDetail />} />
           <Route path="user-management" element={<UserManagement />} />
           <Route path="departments" element={<Departments />} />
-          <Route path="ceo-dashboard" element={<CEODashboard />} />
-          <Route path="cfo-dashboard" element={<CFODashboard />} />
-          <Route path="cto-dashboard" element={<CTODashboard />} />
-          <Route path="cmo-dashboard" element={<CMODashboard />} />
           <Route path="calendar" element={<Calendar />} />
           <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<Settings />} />

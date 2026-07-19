@@ -40,31 +40,11 @@ const adminNavigation = [
 ];
 
 
-const ceoNavigation = [
-  { name: 'CEO Dashboard', href: '/ceo-dashboard', icon: BarChart3 },
-];
-
-const cfoNavigation = [
-  { name: 'CFO Dashboard', href: '/cfo-dashboard', icon: Wallet },
-];
-
-const ctoNavigation = [
-  { name: 'CTO Dashboard', href: '/cto-dashboard', icon: Cpu },
-];
-
-const cmoNavigation = [
-  { name: 'CMO Dashboard', href: '/cmo-dashboard', icon: Megaphone },
-];
-
 export default function Sidebar({ closeSidebar }: SidebarProps) {
   const location = useLocation();
   const user = useSelector((state: any) => state.auth.user);
   const isAdmin = user?.role === 'admin';
   const isManager = ['manager', 'department_manager'].includes(user?.role);
-  const isCeo = user?.role === 'ceo' || isAdmin; 
-  const isCfo = user?.role === 'cfo' || isAdmin;
-  const isCto = user?.role === 'cto' || isAdmin;
-  const isCmo = user?.role === 'cmo' || isAdmin;
   
   return (
     <div className="flex h-full flex-col">
@@ -105,145 +85,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
         })}
         
 
-        {/* CEO Only Section */}
-        {isCeo && (
-          <>
-            <div className="my-4 border-t border-gray-200 dark:border-gray-700"></div>
-            <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-              Executive
-            </div>
-            {ceoNavigation.map((item) => {
-              const isActive = location.pathname === item.href;
-              
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={cn(
-                    'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium',
-                    isActive
-                      ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-400'
-                      : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
-                  )}
-                  onClick={closeSidebar}
-                >
-                  <item.icon className={cn(
-                    'h-5 w-5',
-                    isActive 
-                      ? 'text-primary-700 dark:text-primary-400' 
-                      : 'text-gray-500 dark:text-gray-400'
-                  )} />
-                  {item.name}
-                </Link>
-              );
-            })}
-          </>
-        )}
 
-        {/* CFO Only Section */}
-        {isCfo && (
-          <>
-            <div className="my-4 border-t border-gray-200 dark:border-gray-700"></div>
-            <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-              Finance
-            </div>
-            {cfoNavigation.map((item) => {
-              const isActive = location.pathname === item.href;
-              
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={cn(
-                    'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium',
-                    isActive
-                      ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-400'
-                      : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
-                  )}
-                  onClick={closeSidebar}
-                >
-                  <item.icon className={cn(
-                    'h-5 w-5',
-                    isActive 
-                      ? 'text-primary-700 dark:text-primary-400' 
-                      : 'text-gray-500 dark:text-gray-400'
-                  )} />
-                  {item.name}
-                </Link>
-              );
-            })}
-          </>
-        )}
-
-        {/* CTO Only Section */}
-        {isCto && (
-          <>
-            <div className="my-4 border-t border-gray-200 dark:border-gray-700"></div>
-            <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-              Technical
-            </div>
-            {ctoNavigation.map((item) => {
-              const isActive = location.pathname === item.href;
-              
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={cn(
-                    'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium',
-                    isActive
-                      ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-400'
-                      : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
-                  )}
-                  onClick={closeSidebar}
-                >
-                  <item.icon className={cn(
-                    'h-5 w-5',
-                    isActive 
-                      ? 'text-primary-700 dark:text-primary-400' 
-                      : 'text-gray-500 dark:text-gray-400'
-                  )} />
-                  {item.name}
-                </Link>
-              );
-            })}
-          </>
-        )}
-
-        {/* CMO Only Section */}
-        {isCmo && (
-          <>
-            <div className="my-4 border-t border-gray-200 dark:border-gray-700"></div>
-            <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-              Outreach
-            </div>
-            {cmoNavigation.map((item) => {
-              const isActive = location.pathname === item.href;
-              
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={cn(
-                    'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium',
-                    isActive
-                      ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-400'
-                      : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
-                  )}
-                  onClick={closeSidebar}
-                >
-                  <item.icon className={cn(
-                    'h-5 w-5',
-                    isActive 
-                      ? 'text-primary-700 dark:text-primary-400' 
-                      : 'text-gray-500 dark:text-gray-400'
-                  )} />
-                  {item.name}
-                </Link>
-              );
-            })}
-          </>
-        )}
 
         {/* Admin Only Section */}
         {isAdmin && (
