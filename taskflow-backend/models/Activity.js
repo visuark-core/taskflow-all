@@ -1,43 +1,35 @@
-// models/Activity.js
-const mongoose = require('mongoose');
+const { DataTypes } = require("sequelize");
+const sequelize = require("../config/db");
 
-const activitySchema = new mongoose.Schema({
+const Activity = sequelize.define("Activity", {
+  id: {
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
+    primaryKey: true,
+  },
   type: {
-    type: String,
-    enum: ['task_created', 'task_updated', 'task_completed', 'task_assigned', 
-           'comment_added', 'project_created', 'project_updated', 'member_joined',
-           'member_left', 'file_uploaded'],
-    required: true
+    type: DataTypes.ENUM(
+      "task_created",
+      "task_updated",
+      "task_completed",
+      "task_assigned",
+      "comment_added",
+      "project_created",
+      "project_updated",
+      "team_created",
+      "member_joined",
+      "member_left",
+      "file_uploaded"
+    ),
+    allowNull: false,
   },
   description: {
-    type: String,
-    required: true
-  },
-  user: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  project: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Project'
-  },
-  task: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Task'
+    type: DataTypes.TEXT,
+    allowNull: false,
   },
   metadata: {
-    type: mongoose.Schema.Types.Mixed
+    type: DataTypes.JSON,
   },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
 });
 
-// Create index for efficient querying
-activitySchema.index({ project: 1, createdAt: -1 });
-activitySchema.index({ user: 1, createdAt: -1 });
-
-module.exports = mongoose.model('Activity', activitySchema);
-
+module.exports = Activity;

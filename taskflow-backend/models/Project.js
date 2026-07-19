@@ -1,93 +1,70 @@
-// models/Project.js
-const mongoose = require('mongoose');
+const { DataTypes } = require("sequelize");
+const sequelize = require("../config/db");
 
-const projectSchema = new mongoose.Schema({
+const Project = sequelize.define("Project", {
+  id: {
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
+    primaryKey: true,
+  },
   name: {
-    type: String,
-    required: [true, 'Please add a project name'],
-    trim: true
+    type: DataTypes.STRING,
+    allowNull: false,
+    validate: {
+      notEmpty: true,
+    },
   },
   description: {
-    type: String,
-    required: [true, 'Please add a description']
+    type: DataTypes.TEXT,
+    allowNull: false,
   },
   status: {
-    type: String,
-    enum: ['planning', 'active', 'on-hold', 'completed', 'archived'],
-    default: 'planning'
+    type: DataTypes.ENUM("planning", "active", "on-hold", "completed", "archived"),
+    defaultValue: "planning",
   },
   priority: {
-    type: String,
-    enum: ['low', 'medium', 'high', 'urgent'],
-    default: 'medium'
+    type: DataTypes.ENUM("low", "medium", "high", "urgent"),
+    defaultValue: "medium",
   },
   startDate: {
-    type: Date,
-    required: true
+    type: DataTypes.DATE,
+    allowNull: false,
   },
   endDate: {
-    type: Date,
-    required: true
+    type: DataTypes.DATE,
+    allowNull: false,
   },
   progress: {
-    type: Number,
-    default: 0,
-    min: 0,
-    max: 100
-  },
-  owner: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  team: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Team'
-  },
-  members: [{
-    user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    validate: {
+      min: 0,
+      max: 100,
     },
-    role: {
-      type: String,
-      enum: ['viewer', 'member', 'admin'],
-      default: 'member'
-    }
-  }],
-  tags: [{
-    type: String
-  }],
+  },
+  budget: {
+    type: DataTypes.FLOAT,
+    defaultValue: 0,
+  },
+  tags: {
+    type: DataTypes.JSON,
+    defaultValue: [],
+  },
   color: {
-    type: String,
-    default: '#3B82F6'
+    type: DataTypes.STRING,
+    defaultValue: "#3B82F6",
   },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
-  }
 });
 
-// Update the updatedAt field before saving
-projectSchema.pre('save', function(next) {
-  this.updatedAt = Date.now();
-  next();
-});
+// Instance method
+Project.prototype.calculateProgress = async function () {
+  const Task = sequelize.models.Task;
+  const tasks = await Task.findAll({ where: { ProjectId: this.id } });
 
-// Calculate progress based on completed tasks
-projectSchema.methods.calculateProgress = async function() {
-  const Task = mongoose.model('Task');
-  const tasks = await Task.find({ project: this._id });
-  
   if (tasks.length === 0) return 0;
-  
-  const completedTasks = tasks.filter(task => task.status === 'done').length;
+
+  const completedTasks = tasks.filter((task) => task.status === "done").length;
   return Math.round((completedTasks / tasks.length) * 100);
 };
 
-module.exports = mongoose.model('Project', projectSchema);
-
+module.exports = Project;

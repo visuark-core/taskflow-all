@@ -145,7 +145,7 @@ export default function Settings() {
                 ) : (
                   <form className="space-y-5" onSubmit={handleSubmit}>
                     <div className="space-y-2">
-                      <label htmlFor="fullName" className="block text-sm font-medium">
+                      <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                         Full Name
                       </label>
                       <input
@@ -153,13 +153,13 @@ export default function Settings() {
                         id="fullName"
                         value={formData.fullName}
                         onChange={handleChange}
-                        className="w-full rounded-md border px-3 py-2 dark:bg-gray-800"
+                        className="input"
                         required
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <label htmlFor="email" className="block text-sm font-medium">
+                      <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                         Email Address
                       </label>
                       <input
@@ -167,7 +167,7 @@ export default function Settings() {
                         id="email"
                         value={formData.email}
                         onChange={handleChange}
-                        className="w-full rounded-md border px-3 py-2 dark:bg-gray-800"
+                        className="input disabled:opacity-60"
                         required
                         disabled={!isAdmin}
                       />
@@ -177,14 +177,14 @@ export default function Settings() {
                     </div>
 
                     <div className="space-y-2">
-                      <label htmlFor="role" className="block text-sm font-medium">
+                      <label htmlFor="role" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                         Role
                       </label>
                       <select
                         id="role"
                         value={formData.role}
                         onChange={handleChange}
-                        className="w-full rounded-md border px-3 py-2 dark:bg-gray-800"
+                        className="input disabled:opacity-60"
                         disabled={!isAdmin}
                       >
                         <option value="user">User</option>
@@ -200,14 +200,14 @@ export default function Settings() {
                     </div>
 
                     <div className="space-y-2">
-                      <label htmlFor="department" className="block text-sm font-medium">
+                      <label htmlFor="department" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                         Department
                       </label>
                       <select
                         id="department"
                         value={formData.department}
                         onChange={handleChange}
-                        className="w-full rounded-md border px-3 py-2 dark:bg-gray-800"
+                        className="input disabled:opacity-60"
                         disabled={!isAdmin}
                       >
                         <option value="management">Management</option>
@@ -225,7 +225,7 @@ export default function Settings() {
                     </div>
 
                     <div className="space-y-2">
-                      <label htmlFor="bio" className="block text-sm font-medium">
+                      <label htmlFor="bio" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                         Bio
                       </label>
                       <textarea
@@ -233,15 +233,15 @@ export default function Settings() {
                         rows={4}
                         value={formData.bio}
                         onChange={handleChange}
-                        className="w-full rounded-md border px-3 py-2 dark:bg-gray-800"
+                        className="input resize-none"
                       />
                     </div>
 
-                    <div className="flex justify-end space-x-2 pt-4">
+                    <div className="flex justify-end space-x-3 pt-4">
                       <button
                         type="button"
                         onClick={resetForm}
-                        className="flex items-center gap-1 border px-4 py-2 rounded-md text-sm"
+                        className="btn btn-outline gap-1.5"
                       >
                         <X size={16} />
                         Cancel
@@ -250,7 +250,7 @@ export default function Settings() {
                       <button
                         type="submit"
                         disabled={loading}
-                        className="flex items-center gap-1 bg-primary-600 px-4 py-2 text-white text-sm rounded-md hover:bg-primary-700 disabled:opacity-50"
+                        className="btn btn-primary gap-1.5"
                       >
                         <Check size={16} />
                         {loading ? "Saving..." : "Save"}

@@ -1,7 +1,7 @@
 // routes/notifications.js
 const express = require('express');
 const { protect } = require('../middlewares/auth');
-const Notification = require('../models/Notification');
+const { Notification, Project, Task } = require('../models');
 const asyncHandler = require('../utils/asyncHandler');
 
 const router = express.Router();
@@ -10,11 +10,15 @@ router.use(protect);
 
 // Get user notifications
 router.get('/', asyncHandler(async (req, res) => {
-  const notifications = await Notification.find({ recipient: req.user.id })
-    .populate('relatedProject', 'name')
-    .populate('relatedTask', 'title')
-    .sort('-createdAt')
-    .limit(50);
+  const notifications = await Notification.findAll({
+    where: { recipientId: req.user.id },
+    include: [
+      { model: Project, as: 'relatedProject', attributes: ['id', 'name'] },
+      { model: Task, as: 'relatedTask', attributes: ['id', 'title'] }
+    ],
+    order: [['createdAt', 'DESC']],
+    limit: 50
+  });
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
@@ -29,8 +33,10 @@ router.get('/', asyncHandler(async (req, res) => {
 // Mark notification as read
 router.put('/:id/read', asyncHandler(async (req, res) => {
   const notification = await Notification.findOne({
-    _id: req.params.id,
-    recipient: req.user.id
+    where: {
+      id: req.params.id,
+      recipientId: req.user.id
+    }
   });
 
   if (!notification) {
@@ -50,9 +56,9 @@ router.put('/:id/read', asyncHandler(async (req, res) => {
 
 // Mark all notifications as read
 router.put('/read-all', asyncHandler(async (req, res) => {
-  await Notification.updateMany(
-    { recipient: req.user.id, isRead: false },
-    { isRead: true }
+  await Notification.update(
+    { isRead: true },
+    { where: { recipientId: req.user.id, isRead: false } }
   );
 
   res.status(200).json({
@@ -63,9 +69,11 @@ router.put('/read-all', asyncHandler(async (req, res) => {
 
 // Delete notification
 router.delete('/:id', asyncHandler(async (req, res) => {
-  const notification = await Notification.findOneAndDelete({
-    _id: req.params.id,
-    recipient: req.user.id
+  const notification = await Notification.findOne({
+    where: {
+      id: req.params.id,
+      recipientId: req.user.id
+    }
   });
 
   if (!notification) {
@@ -75,6 +83,8 @@ router.delete('/:id', asyncHandler(async (req, res) => {
     });
   }
 
+  await notification.destroy();
+
   res.status(200).json({
     success: true,
     data: {}
@@ -83,7 +93,7 @@ router.delete('/:id', asyncHandler(async (req, res) => {
 
 // Clear all notifications
 router.delete('/', asyncHandler(async (req, res) => {
-  await Notification.deleteMany({ recipient: req.user.id });
+  await Notification.destroy({ where: { recipientId: req.user.id } });
 
   res.status(200).json({
     success: true,

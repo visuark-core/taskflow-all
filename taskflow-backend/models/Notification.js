@@ -1,52 +1,44 @@
-// models/Notification.js
-const mongoose = require('mongoose');
+const { DataTypes } = require("sequelize");
+const sequelize = require("../config/db");
 
-const notificationSchema = new mongoose.Schema({
-  recipient: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+const Notification = sequelize.define("Notification", {
+  id: {
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
+    primaryKey: true,
   },
   type: {
-    type: String,
-    enum: ['task_assigned', 'task_due', 'mention', 'project_invite', 
-           'deadline_approaching', 'task_completed', 'comment_reply'],
-    required: true
+    type: DataTypes.ENUM(
+      "task_assigned",
+      "task_due",
+      "mention",
+      "project_invite",
+      "deadline_approaching",
+      "task_completed",
+      "comment_reply"
+    ),
+    allowNull: false,
   },
   title: {
-    type: String,
-    required: true
+    type: DataTypes.STRING,
+    allowNull: false,
   },
   message: {
-    type: String,
-    required: true
+    type: DataTypes.TEXT,
+    allowNull: false,
   },
   link: {
-    type: String
+    type: DataTypes.STRING,
   },
   isRead: {
-    type: Boolean,
-    default: false
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
   },
-  relatedProject: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Project'
-  },
-  relatedTask: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Task'
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
 });
 
-// Mark notification as read
-notificationSchema.methods.markAsRead = function() {
+Notification.prototype.markAsRead = function () {
   this.isRead = true;
   return this.save();
 };
 
-module.exports = mongoose.model('Notification', notificationSchema);
-
+module.exports = Notification;

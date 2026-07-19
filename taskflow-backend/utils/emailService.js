@@ -33,7 +33,7 @@ class EmailService {
       <p>${task.description || 'No description provided'}</p>
       <p>Due Date: ${task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date'}</p>
       <p>Priority: ${task.priority}</p>
-      <a href="${process.env.CLIENT_URL}/tasks/${task._id}">View Task</a>
+      <a href="${process.env.CLIENT_URL}/tasks/${task.id}">View Task</a>
     `;
 
     await this.sendEmail({
@@ -50,7 +50,7 @@ class EmailService {
       <p>${invitedBy.name} has invited you to join the project:</p>
       <h2>${project.name}</h2>
       <p>${project.description}</p>
-      <a href="${process.env.CLIENT_URL}/projects/${project._id}">View Project</a>
+      <a href="${process.env.CLIENT_URL}/projects/${project.id}">View Project</a>
     `;
 
     await this.sendEmail({
@@ -68,7 +68,7 @@ class EmailService {
       <h2>${task.title}</h2>
       <p>Due Date: ${new Date(task.dueDate).toLocaleDateString()}</p>
       <p>Status: ${task.status}</p>
-      <a href="${process.env.CLIENT_URL}/tasks/${task._id}">View Task</a>
+      <a href="${process.env.CLIENT_URL}/tasks/${task.id}">View Task</a>
     `;
 
     await this.sendEmail({

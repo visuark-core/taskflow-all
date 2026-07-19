@@ -1,9 +1,8 @@
 // utils/cronJobs.js
 const cron = require('node-cron');
-const Task = require('../models/Task');
-const Notification = require('../models/Notification');
-const Project = require('../models/Project');
+const { Task, Notification, Project, Activity, User } = require('../models');
 const emailService = require('./emailService');
+const { Op } = require('sequelize');
 
 // Check for due tasks and send notifications
 
@@ -18,29 +17,33 @@ const checkDueTasks = async () => {
     dayAfter.setHours(0, 0, 0, 0);
 
     // Find tasks due tomorrow
-    const dueTasks = await Task.find({
-      dueDate: {
-        $gte: tomorrow,
-        $lt: dayAfter
+    const dueTasks = await Task.findAll({
+      where: {
+        dueDate: {
+          [Op.gte]: tomorrow,
+          [Op.lt]: dayAfter
+        },
+        status: { [Op.ne]: 'done' }
       },
-      status: { $ne: 'done' }
-    }).populate('assignee', 'name email preferences');
+      include: [{ model: User, as: 'assignee', attributes: ['id', 'name', 'email', 'preferences'] }]
+    });
 
     for (const task of dueTasks) {
       if (task.assignee) {
         // Create notification
         await Notification.create({
-          recipient: task.assignee._id,
+          recipientId: task.assignee.id,
           type: 'deadline_approaching',
           title: 'Task Due Tomorrow',
           message: `Task "${task.title}" is due tomorrow`,
-          link: `/tasks/${task._id}`,
-          relatedTask: task._id,
-          relatedProject: task.project
+          link: `/tasks/${task.id}`,
+          relatedTaskId: task.id,
+          relatedProjectId: task.projectId
         });
 
         // Send email if user has email notifications enabled
         if (task.assignee.preferences?.notifications?.email) {
+          // ensure emailService does not use Mongoose internals
           await emailService.sendDueDateReminderEmail(task.assignee, task);
         }
       }
@@ -55,12 +58,11 @@ const checkDueTasks = async () => {
 // Update project progress
 const updateProjectProgress = async () => {
   try {
-    const projects = await Project.find({ status: 'active' });
+    const projects = await Project.findAll({ where: { status: 'active' } });
     
     for (const project of projects) {
       const progress = await project.calculateProgress();
-      project.progress = progress;
-      await project.save();
+      await project.update({ progress });
     }
 
     console.log(`Updated progress for ${projects.length} projects`);
@@ -72,15 +74,16 @@ const updateProjectProgress = async () => {
 // Clean up old activities
 const cleanupOldActivities = async () => {
   try {
-    const Activity = require('../models/Activity');
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
-    const result = await Activity.deleteMany({
-      createdAt: { $lt: ninetyDaysAgo }
+    const deletedCount = await Activity.destroy({
+      where: {
+        createdAt: { [Op.lt]: ninetyDaysAgo }
+      }
     });
 
-    console.log(`Cleaned up ${result.deletedCount} old activities`);
+    console.log(`Cleaned up ${deletedCount} old activities`);
   } catch (error) {
     console.error('Error cleaning up activities:', error);
   }
@@ -100,4 +103,3 @@ const startCronJobs = () => {
 };
 
 module.exports = { startCronJobs };
-

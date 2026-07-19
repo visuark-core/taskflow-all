@@ -11,7 +11,16 @@ interface ProjectCardProps {
 export default function ProjectCard({ project }: ProjectCardProps) {
   // Fallbacks for backend data
   const tasksCount = project.tasksCount || { completed: 0, total: 0 };
-  const members = project.members || [];
+  // Handle both flat member arrays and nested member.user structure
+  const membersList = project.members?.map((m: any) => m.user || m) || [];
+  // Include owner in the members list if not already there
+  const allMembers = project.owner && !membersList.find((m: any) => m._id === project.owner._id)
+    ? [project.owner, ...membersList]
+    : membersList;
+  // Calculate progress percentage from task counts
+  const progressPercentage = tasksCount.total > 0 
+    ? Math.round((tasksCount.completed / tasksCount.total) * 100) 
+    : (project.progress || 0);
 
   const getStatusBadge = (status: string) => {
     const statusMap: Record<string, { variant: 'success' | 'warning' | 'error' | 'default' }> = {
@@ -29,7 +38,7 @@ export default function ProjectCard({ project }: ProjectCardProps) {
         <div className="relative bg-gradient-to-r from-primary-600 to-secondary-500 h-3">
           <div 
             className="absolute bottom-0 left-0 h-full bg-white/30 dark:bg-white/20"
-            style={{ width: `${project.progress}%` }}
+            style={{ width: `${progressPercentage}%` }}
           />
         </div>
       </div>
@@ -50,18 +59,18 @@ export default function ProjectCard({ project }: ProjectCardProps) {
         </div>
         <div className="mt-4 flex items-center justify-between">
           <div className="flex items-center space-x-1">
-            <span className="text-sm font-medium">{project.progress}%</span>
+            <span className="text-sm font-medium">{progressPercentage}%</span>
             <span className="text-xs text-gray-500 dark:text-gray-400">
               {tasksCount.completed}/{tasksCount.total} tasks
             </span>
           </div>
           <div className="text-sm text-gray-500 dark:text-gray-400">
-            Due {project.dueDate ? formatDate(new Date(project.dueDate)) : 'N/A'}
+            Due {(project.endDate || project.dueDate) ? formatDate(new Date(project.endDate || project.dueDate)) : 'N/A'}
           </div>
         </div>
         <div className="mt-4 flex items-center justify-between">
           <div className="flex -space-x-2">
-            {members.slice(0, 3).map((member: any, i: number) => (
+            {allMembers.slice(0, 3).map((member: any, i: number) => (
               <Avatar 
                 key={i} 
                 name={member.name || 'User'} 
@@ -69,9 +78,9 @@ export default function ProjectCard({ project }: ProjectCardProps) {
                 className="border-2 border-white dark:border-gray-800" 
               />
             ))}
-            {members.length > 3 && (
+            {allMembers.length > 3 && (
               <div className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-gray-200 text-xs font-medium dark:border-gray-800 dark:bg-gray-700">
-                +{members.length - 3}
+                +{allMembers.length - 3}
               </div>
             )}
           </div>

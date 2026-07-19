@@ -1,69 +1,94 @@
-// controllers/activityController.js
-const Activity = require('../models/Activity');
-const Project = require('../models/Project');
+const { Activity, User, Project, Task, Team } = require('../models');
 const asyncHandler = require('../utils/asyncHandler');
-const ErrorResponse = require('../utils/errorResponse');
 
-// Get all activities for user's projects
-exports.getActivities = asyncHandler(async (req, res, next) => {
-  // Get user's projects
-  const projects = await Project.find({
-    $or: [
-      { owner: req.user.id },
-      { 'members.user': req.user.id }
+// Helper to get project IDs the user has access to
+async function getAccessibleProjectIds(user) {
+  const userTeams = await Team.findAll({
+    include: [{ model: User, as: 'members' }]
+  });
+  
+  const myTeamIds = userTeams
+    .filter(t => t.ownerId === user.id || t.members.some(m => m.id === user.id))
+    .map(t => t.id);
+
+  const myTasks = await Task.findAll({
+    where: { assigneeId: user.id },
+    attributes: ['projectId']
+  });
+  const myTaskProjectIds = [...new Set(myTasks.map(t => t.projectId).filter(id => id != null))];
+
+  const projects = await Project.findAll({
+    include: [
+      { model: User, as: 'members', attributes: ['id'] }
     ]
-  }).select('_id');
-
-  const projectIds = projects.map(p => p._id);
-
-  const activities = await Activity.find({ 
-    project: { $in: projectIds } 
-  })
-  .populate('user', 'name email avatar')
-  .populate('project', 'name')
-  .populate('task', 'title')
-  .sort('-createdAt')
-  .limit(parseInt(req.query.limit) || 100);
-
-  res.status(200).json({
-    success: true,
-    count: activities.length,
-    data: activities
   });
+
+  const userProjects = projects.filter(p => 
+    p.ownerId === user.id || 
+    p.members.some(m => m.id === user.id) ||
+    (p.teamId && myTeamIds.includes(p.teamId)) ||
+    myTaskProjectIds.includes(p.id)
+  );
+
+  return userProjects.map(p => p.id);
+}
+
+// Get all activities (dashboard feed, scoped to user's projects)
+exports.getActivities = asyncHandler(async (req, res, next) => {
+  const projectIds = await getAccessibleProjectIds(req.user);
+
+  const activities = await Activity.findAll({
+    where: {
+      projectId: projectIds
+    },
+    include: [
+      { model: User, attributes: ['id', 'name', 'avatar'] },
+      { model: Project, attributes: ['id', 'name'] },
+      { model: Task, attributes: ['id', 'title'] }
+    ],
+    order: [['createdAt', 'DESC']],
+    limit: 100
+  });
+
+  res.status(200).json({ success: true, count: activities.length, data: activities });
 });
 
-// Get activities for a specific project
+// Get activities for a project
 exports.getProjectActivities = asyncHandler(async (req, res, next) => {
-  const activities = await Activity.find({ 
-    project: req.params.projectId 
-  })
-  .populate('user', 'name email avatar')
-  .populate('task', 'title')
-  .sort('-createdAt')
-  .limit(parseInt(req.query.limit) || 50);
+  // Check project access
+  const projectIds = await getAccessibleProjectIds(req.user);
+  const projectId = parseInt(req.params.projectId);
 
-  res.status(200).json({
-    success: true,
-    count: activities.length,
-    data: activities
+  if (!projectIds.includes(projectId)) {
+    return res.status(403).json({ success: false, error: 'Not authorized to access activities of this project' });
+  }
+
+  const activities = await Activity.findAll({
+    where: { projectId },
+    include: [
+      { model: User, attributes: ['id', 'name', 'avatar'] },
+      { model: Project, attributes: ['id', 'name'] },
+      { model: Task, attributes: ['id', 'title'] }
+    ],
+    order: [['createdAt', 'DESC']],
+    limit: 50
   });
+
+  res.status(200).json({ success: true, count: activities.length, data: activities });
 });
 
-// Get activities for a specific user
+// Get activities for a user
 exports.getUserActivities = asyncHandler(async (req, res, next) => {
-  const activities = await Activity.find({ 
-    user: req.params.userId 
-  })
-  .populate('user', 'name email avatar')
-  .populate('project', 'name')
-  .populate('task', 'title')
-  .sort('-createdAt')
-  .limit(parseInt(req.query.limit) || 50);
-
-  res.status(200).json({
-    success: true,
-    count: activities.length,
-    data: activities
+  const activities = await Activity.findAll({
+    where: { userId: req.params.userId },
+    include: [
+      { model: User, attributes: ['id', 'name', 'avatar'] },
+      { model: Project, attributes: ['id', 'name'] },
+      { model: Task, attributes: ['id', 'title'] }
+    ],
+    order: [['createdAt', 'DESC']],
+    limit: 50
   });
-});
 
+  res.status(200).json({ success: true, count: activities.length, data: activities });
+});

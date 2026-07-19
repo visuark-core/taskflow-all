@@ -1,233 +1,277 @@
-// controllers/projectController.js
-const Project = require('../models/Project');
-const Activity = require('../models/Activity');
+const { Project, User, Team, Task, Activity, ProjectMember, Notification } = require('../models');
 const asyncHandler = require('../utils/asyncHandler');
 const ErrorResponse = require('../utils/errorResponse');
+const { Op } = require('sequelize');
 
-// Get all projects for user
 exports.getProjects = asyncHandler(async (req, res, next) => {
-  const projects = await Project.find({
-    $or: [
-      { owner: req.user.id },
-      { 'members.user': req.user.id }
-    ]
-  })
-  .populate('owner', 'name email avatar')
-  .populate('members.user', 'name email avatar')
-  .populate('team', 'name')
-  .sort('-createdAt');
+  const userTeams = await Team.findAll({
+    include: [{ model: User, as: 'members' }]
+  });
+  
+  const myTeamIds = userTeams
+    .filter(t => t.ownerId === req.user.id || t.members.some(m => m.id === req.user.id))
+    .map(t => t.id);
 
-  res.status(200).json({
-    success: true,
-    count: projects.length,
-    data: projects
+  const myTasks = await Task.findAll({
+    where: { assigneeId: req.user.id },
+    attributes: ['projectId']
+  });
+  const myTaskProjectIds = [...new Set(myTasks.map(t => t.projectId).filter(id => id != null))];
+
+  const projects = await Project.findAll({
+    include: [
+      { model: User, as: 'owner', attributes: ['id', 'name'] },
+      { model: Team, attributes: ['id', 'name'] },
+      { model: User, as: 'members', attributes: ['id', 'name'] }
+    ],
+    order: [['createdAt', 'DESC']]
+  });
+
+  const isAdminOrExecutive = ['admin', 'ceo', 'cfo', 'cto', 'cmo'].includes(req.user.role);
+  if (isAdminOrExecutive) {
+    return res.status(200).json({
+      success: true,
+      count: projects.length,
+      data: projects
+    });
+  }
+
+  const userProjects = projects.filter(p => 
+    p.ownerId === req.user.id || 
+    p.members.some(m => m.id === req.user.id) ||
+    (p.teamId && myTeamIds.includes(p.teamId)) ||
+    myTaskProjectIds.includes(p.id)
+  );
+
+  console.log(`[DEBUG getProjects] User ID: ${req.user.id}`);
+  console.log(`[DEBUG getProjects] My Team IDs:`, myTeamIds);
+  console.log(`[DEBUG getProjects] All Projects teamIds:`, projects.map(p => p.teamId));
+
+  res.status(200).json({ 
+    success: true, 
+    count: userProjects.length, 
+    data: userProjects,
+    debug: { myTeamIds, allProjectTeamIds: projects.map(p => p.teamId) } 
   });
 });
 
-// Get single project
 exports.getProject = asyncHandler(async (req, res, next) => {
-  const project = await Project.findById(req.params.id)
-    .populate('owner', 'name email avatar')
-    .populate('members.user', 'name email avatar')
-    .populate('team', 'name');
+  const project = await Project.findByPk(req.params.id, {
+    include: [
+      { model: User, as: 'owner', attributes: ['id', 'name'] },
+      { model: Team, attributes: ['id', 'name'] },
+      { model: User, as: 'members', attributes: ['id', 'name'] }
+    ]
+  });
 
-  if (!project) {
-    return next(new ErrorResponse(`Project not found with id of ${req.params.id}`, 404));
+  if (!project) return next(new ErrorResponse('Project not found', 404));
+
+  // Check access authorization
+  const isOwner = project.ownerId === req.user.id;
+  const isExecutive = ['admin', 'ceo', 'cfo', 'cto', 'cmo'].includes(req.user.role);
+  const isMember = project.members && project.members.some(m => m.id === req.user.id);
+  
+  let isTeamMember = false;
+  if (project.teamId) {
+    const team = await Team.findByPk(project.teamId, {
+      include: [{ model: User, as: 'members', attributes: ['id'] }]
+    });
+    if (team) {
+      isTeamMember = team.ownerId === req.user.id || (team.members && team.members.some(m => m.id === req.user.id));
+    }
   }
 
-  // Check if user has access to project
-  const hasAccess = project.owner.equals(req.user.id) || 
-                   project.members.some(member => member.user.equals(req.user.id));
+  let hasTaskAssignee = false;
+  const task = await Task.findOne({
+    where: { projectId: project.id, assigneeId: req.user.id }
+  });
+  if (task) {
+    hasTaskAssignee = true;
+  }
 
-  if (!hasAccess) {
+  if (!isExecutive && !isOwner && !isMember && !isTeamMember && !hasTaskAssignee) {
     return next(new ErrorResponse('Not authorized to access this project', 403));
   }
 
-  res.status(200).json({
-    success: true,
-    data: project
-  });
+  res.status(200).json({ success: true, data: project });
 });
 
-// Create new project
 exports.createProject = asyncHandler(async (req, res, next) => {
-  req.body.owner = req.user.id;
+  if (req.user.role !== 'admin') {
+    return next(new ErrorResponse('Only admin can create projects', 403));
+  }
+
+  req.body.ownerId = req.user.id;
+
+  if (req.body.dueDate) {
+    req.body.endDate = req.body.dueDate;
+  }
+  if (!req.body.startDate) {
+    req.body.startDate = new Date();
+  }
+  if (!req.body.endDate) {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    req.body.endDate = d;
+  }
 
   const project = await Project.create(req.body);
 
-  // Create activity
+  await project.addMember(req.user.id, { through: { role: 'admin' } });
+
   await Activity.create({
+    userId: req.user.id,
+    projectId: project.id,
     type: 'project_created',
-    description: `${req.user.name} created project ${project.name}`,
-    user: req.user.id,
-    project: project._id
+    description: `Created project ${project.name}`
   });
 
-  // Emit socket event
-  req.io.emit('project-created', {
-    project,
-    user: req.user
-  });
+  if (req.body.teamId) {
+    const team = await Team.findByPk(req.body.teamId);
+    if (team && team.ownerId !== req.user.id) {
+      await Notification.create({
+        recipientId: team.ownerId,
+        type: 'project_invite',
+        title: 'New Project Assigned',
+        message: `Project "${project.name}" has been assigned to your team "${team.name}".`,
+        link: `/projects`
+      });
+    }
+  }
 
-  res.status(201).json({
-    success: true,
-    data: project
-  });
+  if (req.body.managerId && req.body.managerId !== req.user.id) {
+    await project.addMember(req.body.managerId, { through: { role: 'admin' } });
+    await Notification.create({
+      recipientId: req.body.managerId,
+      type: 'project_invite',
+      title: 'New Project Assigned',
+      message: `You have been assigned as a manager for the project "${project.name}".`,
+      link: `/projects`
+    });
+  }
+
+  res.status(201).json({ success: true, data: project });
 });
 
-// Update project
 exports.updateProject = asyncHandler(async (req, res, next) => {
-  let project = await Project.findById(req.params.id);
+  const project = await Project.findByPk(req.params.id, {
+    include: [{ model: Team }]
+  });
+  if (!project) return next(new ErrorResponse('Project not found', 404));
 
-  if (!project) {
-    return next(new ErrorResponse(`Project not found with id of ${req.params.id}`, 404));
+  const isOwner = project.ownerId === req.user.id;
+  const isExecutive = ['admin', 'ceo', 'cfo', 'cto', 'cmo'].includes(req.user.role);
+  const isTeamManager = project.Team && project.Team.ownerId === req.user.id;
+
+  if (!isOwner && !isExecutive && !isTeamManager) {
+    const member = await ProjectMember.findOne({ where: { ProjectId: project.id, UserId: req.user.id } });
+    if (!member || member.role !== 'admin') {
+      return next(new ErrorResponse('Not authorized to update this project', 403));
+    }
   }
 
-  // Check if user is owner or admin
-  const isAdmin = project.members.some(member => 
-    member.user.equals(req.user.id) && member.role === 'admin'
-  );
-
-  if (!project.owner.equals(req.user.id) && !isAdmin) {
-    return next(new ErrorResponse('Not authorized to update this project', 403));
+  if (req.body.dueDate) {
+    req.body.endDate = req.body.dueDate;
   }
 
-  project = await Project.findByIdAndUpdate(req.params.id, req.body, {
-    new: true,
-    runValidators: true
-  });
+  if (req.body.endDate) {
+    const proposedDate = new Date(req.body.endDate);
+    const maxTask = await Task.findOne({
+      where: { projectId: project.id, dueDate: { [Op.ne]: null } },
+      order: [['dueDate', 'DESC']]
+    });
+    if (maxTask && maxTask.dueDate) {
+      const maxTaskDate = new Date(maxTask.dueDate);
+      if (proposedDate < maxTaskDate) {
+        return next(new ErrorResponse(`Project deadline cannot be earlier than the latest task due date (${maxTask.dueDate.toISOString().split('T')[0]})`, 400));
+      }
+    }
+  }
 
-  // Create activity
-  await Activity.create({
-    type: 'project_updated',
-    description: `${req.user.name} updated project ${project.name}`,
-    user: req.user.id,
-    project: project._id,
-    metadata: { changes: req.body }
-  });
+  await project.update(req.body);
 
-  // Emit socket event
-  req.io.to(`project-${project._id}`).emit('project-updated', {
-    project,
-    user: req.user
-  });
-
-  res.status(200).json({
-    success: true,
-    data: project
-  });
+  res.status(200).json({ success: true, data: project });
 });
 
-// Delete project
 exports.deleteProject = asyncHandler(async (req, res, next) => {
-  const project = await Project.findById(req.params.id);
+  const project = await Project.findByPk(req.params.id);
+  if (!project) return next(new ErrorResponse('Project not found', 404));
 
-  if (!project) {
-    return next(new ErrorResponse(`Project not found with id of ${req.params.id}`, 404));
-  }
+  const isOwner = project.ownerId === req.user.id;
+  const isExecutive = ['admin', 'ceo', 'cfo', 'cto', 'cmo'].includes(req.user.role);
 
-  // Check if user is owner
-  if (!project.owner.equals(req.user.id)) {
+  if (!isOwner && !isExecutive) {
     return next(new ErrorResponse('Not authorized to delete this project', 403));
   }
 
-  await project.deleteOne();
-
-  // Emit socket event
-  req.io.emit('project-deleted', {
-    projectId: project._id,
-    user: req.user
-  });
-
-  res.status(200).json({
-    success: true,
-    data: {}
-  });
+  await project.destroy();
+  res.status(200).json({ success: true, data: {} });
 });
 
-// Add member to project
 exports.addMember = asyncHandler(async (req, res, next) => {
-  const project = await Project.findById(req.params.id);
-
-  if (!project) {
-    return next(new ErrorResponse(`Project not found with id of ${req.params.id}`, 404));
+  if (req.user.role !== 'admin') {
+    return next(new ErrorResponse('Only admin can add members to a project', 403));
   }
 
-  // Check if user is owner or admin
-  const isAdmin = project.members.some(member => 
-    member.user.equals(req.user.id) && member.role === 'admin'
-  );
+  const project = await Project.findByPk(req.params.id);
+  if (!project) return next(new ErrorResponse('Project not found', 404));
 
-  if (!project.owner.equals(req.user.id) && !isAdmin) {
-    return next(new ErrorResponse('Not authorized to add members to this project', 403));
-  }
-
-  // Check if member already exists
-  const memberExists = project.members.some(member => 
-    member.user.equals(req.body.userId)
-  );
-
-  if (memberExists) {
-    return next(new ErrorResponse('User is already a member of this project', 400));
-  }
-
-  project.members.push({
-    user: req.body.userId,
-    role: req.body.role || 'member'
-  });
-
-  await project.save();
-
-  // Create activity
-  await Activity.create({
-    type: 'member_joined',
-    description: `${req.user.name} added a new member to project ${project.name}`,
-    user: req.user.id,
-    project: project._id,
-    metadata: { newMemberId: req.body.userId }
-  });
-
-  res.status(200).json({
-    success: true,
-    data: project
-  });
+  await project.addMember(req.body.userId, { through: { role: req.body.role || 'member' } });
+  res.status(200).json({ success: true, data: project });
 });
 
-// Remove member from project
 exports.removeMember = asyncHandler(async (req, res, next) => {
-  const project = await Project.findById(req.params.id);
-
-  if (!project) {
-    return next(new ErrorResponse(`Project not found with id of ${req.params.id}`, 404));
+  if (req.user.role !== 'admin') {
+    return next(new ErrorResponse('Only admin can remove members from a project', 403));
   }
 
-  // Check if user is owner or admin
-  const isAdmin = project.members.some(member => 
-    member.user.equals(req.user.id) && member.role === 'admin'
-  );
+  const project = await Project.findByPk(req.params.id);
+  if (!project) return next(new ErrorResponse('Project not found', 404));
 
-  if (!project.owner.equals(req.user.id) && !isAdmin) {
-    return next(new ErrorResponse('Not authorized to remove members from this project', 403));
-  }
-
-  project.members = project.members.filter(member => 
-    !member.user.equals(req.params.userId)
-  );
-
-  await project.save();
-
-  // Create activity
-  await Activity.create({
-    type: 'member_left',
-    description: `${req.user.name} removed a member from project ${project.name}`,
-    user: req.user.id,
-    project: project._id,
-    metadata: { removedMemberId: req.params.userId }
-  });
-
-  res.status(200).json({
-    success: true,
-    data: project
-  });
+  await project.removeMember(req.params.userId);
+  res.status(200).json({ success: true, data: project });
 });
 
+exports.getProjectsByTeamMember = asyncHandler(async (req, res, next) => {
+  const memberId = req.params.memberId;
+  const memberTasks = await Task.findAll({
+    where: { assigneeId: memberId },
+    attributes: ['projectId']
+  });
+  const memberTaskProjectIds = [...new Set(memberTasks.map(t => t.projectId).filter(id => id != null))];
+
+  const projects = await Project.findAll({
+    include: [
+      { model: User, as: 'owner', attributes: ['id', 'name'] },
+      { model: Team, attributes: ['id', 'name'] },
+      { model: User, as: 'members', attributes: ['id', 'name'] }
+    ],
+    order: [['createdAt', 'DESC']]
+  });
+
+  const filtered = projects.filter(p => 
+    p.ownerId == memberId || 
+    p.members.some(m => m.id == memberId) ||
+    memberTaskProjectIds.includes(p.id)
+  );
+  res.status(200).json({ success: true, data: filtered });
+});
+
+exports.getTeamMembers = asyncHandler(async (req, res, next) => {
+  const users = await User.findAll({
+    attributes: ['id', 'name', 'email', 'avatar'],
+    where: {
+      id: { [Op.ne]: req.user.id }
+    }
+  });
+
+  const normalized = users.map(u => {
+    const json = u.toJSON();
+    return {
+      ...json,
+      _id: json.id
+    };
+  });
+
+  res.status(200).json({ success: true, data: normalized });
+});

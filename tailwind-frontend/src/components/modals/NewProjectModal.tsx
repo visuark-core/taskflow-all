@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../app/store';
@@ -21,6 +21,8 @@ export default function NewProjectModal({ isOpen, onClose, onCreated }: NewProje
     endDate: '',
     tags: [] as string[],
     color: '#3B82F6',
+    teamId: '',
+    managerId: '',
   });
   const [newTag, setNewTag] = useState('');
   const colorOptions = [
@@ -45,6 +47,31 @@ export default function NewProjectModal({ isOpen, onClose, onCreated }: NewProje
   };
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [teams, setTeams] = useState<any[]>([]);
+  const [managers, setManagers] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (isOpen) {
+      axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/teams`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      .then(res => setTeams(res.data.data || []))
+      .catch(console.error);
+
+      axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/users`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      .then(res => {
+        const users = res.data.data || res.data.users || [];
+        const managerUsers = users.filter((u: any) => 
+          ['manager', 'department_manager'].includes(u.role)
+        );
+        setManagers(managerUsers);
+      })
+      .catch(console.error);
+    }
+  }, [isOpen, token]);
+
   const resetForm = () => {
     setFormData({
       name: '',
@@ -55,6 +82,8 @@ export default function NewProjectModal({ isOpen, onClose, onCreated }: NewProje
       endDate: '',
       tags: [],
       color: '#3B82F6',
+      teamId: '',
+      managerId: '',
     });
   };
   const handleSubmit = async (e: React.FormEvent) => {
@@ -71,6 +100,8 @@ export default function NewProjectModal({ isOpen, onClose, onCreated }: NewProje
         endDate: formData.endDate,
         tags: formData.tags,
         color: formData.color,
+        teamId: formData.teamId || undefined,
+        managerId: formData.managerId || undefined,
       };
       await axios.post('http://localhost:5000/api/projects', form, {
         headers: { Authorization: `Bearer ${token}` },
@@ -133,6 +164,24 @@ export default function NewProjectModal({ isOpen, onClose, onCreated }: NewProje
                     <option value="medium">Medium Priority</option>
                     <option value="high">High Priority</option>
                     <option value="urgent">Urgent</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Assign to Team</label>
+                  <select value={formData.teamId} onChange={(e) => setFormData({ ...formData, teamId: e.target.value })} className="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+                    <option value="">No Team (Personal/Global)</option>
+                    {teams.map(t => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Assign to Manager</label>
+                  <select value={formData.managerId} onChange={(e) => setFormData({ ...formData, managerId: e.target.value })} className="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+                    <option value="">No Manager</option>
+                    {managers.map(m => (
+                      <option key={m.id || m._id} value={m.id || m._id}>{m.name}</option>
+                    ))}
                   </select>
                 </div>
                 <div>

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Plus, Filter, SortAsc } from 'lucide-react';
 import KanbanColumn from '../components/kanban/KanbanColumn';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../app/store';
 
 const defaultColumns = [
   { id: 'todo', title: 'To Do' },
@@ -10,15 +12,16 @@ const defaultColumns = [
 ];
 
 export default function KanbanBoard() {
+  const currentUser = useSelector((state: RootState) => state.auth.user);
   const [columns] = useState<any[]>(defaultColumns);
   const [tasksByStatus, setTasksByStatus] = useState<Record<string, any[]>>({});
   const [projects, setProjects] = useState<any[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [_, setLoading] = useState(true);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const token = localStorage.getItem('token');
   const refreshTasks = () => {
-    // bump selectedProject to trigger effect by resetting it briefly
-    setSelectedProject((s) => s ? '' : '');
+    setRefreshTrigger(prev => prev + 1);
   };
 
   useEffect(() => {
@@ -55,6 +58,13 @@ export default function KanbanBoard() {
 
     // If selectedProject is empty string -> fetch tasks for ALL projects
     if (selectedProject === '') {
+      const isManagerOrAdmin = ['admin', 'manager', 'ceo', 'cfo', 'cmo', 'cto'].includes(currentUser?.role || '');
+      if (isManagerOrAdmin) {
+        setTasksByStatus(groupedEmpty);
+        setLoading(false);
+        return;
+      }
+
       if (!projects || projects.length === 0) {
         setTasksByStatus(groupedEmpty);
         setLoading(false);
@@ -112,7 +122,7 @@ export default function KanbanBoard() {
       setTasksByStatus(groupedEmpty);
       setLoading(false);
     }
-  }, [selectedProject, token, projects]);
+  }, [selectedProject, token, projects, refreshTrigger]);
 
   return (
     <div className="animate-fade-in space-y-6">
@@ -131,15 +141,17 @@ export default function KanbanBoard() {
             </button>
           </div>
 
-          <div className="w-64">
-            <label className="sr-only">Project</label>
-            <select value={selectedProject} onChange={(e) => setSelectedProject(e.target.value)} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800">
-              <option value="">Select a project</option>
-              {projects.map(p => (
-                <option key={p._id || p.id} value={p._id || p.id}>{p.name}</option>
-              ))}
-            </select>
-          </div>
+          {['admin', 'manager', 'ceo', 'cfo', 'cmo', 'cto'].includes(currentUser?.role || '') && (
+            <div className="w-64">
+              <label className="sr-only">Project</label>
+              <select value={selectedProject} onChange={(e) => setSelectedProject(e.target.value)} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800">
+                <option value="">Select a project</option>
+                {projects.map(p => (
+                  <option key={p._id || p.id} value={p._id || p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <button className="btn btn-primary">
             <Plus className="mr-1 h-4 w-4" />
@@ -149,24 +161,26 @@ export default function KanbanBoard() {
       </div>
 
       {/* Kanban Board */}
-      <div className="flex h-[calc(100vh-12rem)] gap-4 overflow-x-auto pb-4">
-        {columns.map((column) => (
-          <KanbanColumn
-            key={column.id}
-            title={column.title}
-            tasks={tasksByStatus[column.id] || []}
-            columnId={column.id}
-            onMove={refreshTasks}
-          />
-        ))}
-
-        <div className="flex-shrink-0 w-72">
-          <button className="flex h-12 w-full items-center justify-center rounded-lg border-2 border-dashed border-gray-300 font-medium text-gray-500 hover:border-primary-500 hover:text-primary-500 dark:border-gray-700 dark:text-gray-400 dark:hover:border-primary-500 dark:hover:text-primary-400">
-            <Plus className="mr-1 h-4 w-4" />
-            Add Column
-          </button>
+      {selectedProject === '' && ['admin', 'manager', 'ceo', 'cfo', 'cmo', 'cto'].includes(currentUser?.role || '') ? (
+        <div className="flex h-[calc(100vh-12rem)] items-center justify-center rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700">
+          <div className="text-center">
+            <h3 className="mt-2 text-lg font-semibold text-gray-900 dark:text-white">No Project Selected</h3>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Please select a project from the dropdown above to view its Kanban board.</p>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex h-[calc(100vh-12rem)] gap-4 overflow-x-auto pb-4">
+          {columns.map((column) => (
+            <KanbanColumn
+              key={column.id}
+              title={column.title}
+              tasks={tasksByStatus[column.id] || []}
+              columnId={column.id}
+              onMove={refreshTasks}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

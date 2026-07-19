@@ -1,5 +1,5 @@
 // controllers/authController.js
-const User = require('../models/User');
+const { User, Team } = require('../models');
 const asyncHandler = require('../utils/asyncHandler');
 const ErrorResponse = require('../utils/errorResponse');
 
@@ -11,7 +11,6 @@ exports.register = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse('Company name is required', 400));
   }
 
-  // Store all provided fields with user
   const user = await User.create({
     name,
     email,
@@ -21,14 +20,6 @@ exports.register = asyncHandler(async (req, res, next) => {
     department
   });
 
-  // Create company and associate owner
-  // If you have a Company model, create it here
-  // const Company = require('../models/Company');
-  // const newCompany = await Company.create({
-  //   name: company,
-  //   owner: user._id
-  // });
-
   sendTokenResponse(user, 201, res);
 });
 
@@ -36,39 +27,34 @@ exports.register = asyncHandler(async (req, res, next) => {
 exports.login = asyncHandler(async (req, res, next) => {
   const { email, password } = req.body;
 
-  // Validate email & password
   if (!email || !password) {
     return next(new ErrorResponse('Please provide an email and password', 400));
   }
 
-  // Check for user
-  const userWithPassword = await User.findOne({ email }).select('+password');
+  const user = await User.findOne({ where: { email } });
 
-  if (!userWithPassword) {
+  if (!user) {
     return next(new ErrorResponse('Invalid credentials', 401));
   }
 
-  // Check if password matches
-  const isMatch = await userWithPassword.matchPassword(password);
+  const isMatch = await user.matchPassword(password);
 
   if (!isMatch) {
     return next(new ErrorResponse('Invalid credentials', 401));
   }
 
   // Update last login
-  userWithPassword.lastLogin = Date.now();
-  await userWithPassword.save();
+  user.lastLogin = Date.now();
+  await user.save();
 
-  // Fetch user without password for response
-  const user = await User.findById(userWithPassword._id);
   sendTokenResponse(user, 200, res);
 });
 
 // Get current logged in user
 exports.getMe = asyncHandler(async (req, res, next) => {
-  const user = await User.findById(req.user.id)
-    .populate('teams')
-    .select('-password');
+  const user = await User.findByPk(req.user.id, {
+    include: [{ model: Team }]
+  });
 
   res.status(200).json({
     success: true,
@@ -84,10 +70,12 @@ exports.updateDetails = asyncHandler(async (req, res, next) => {
     preferences: req.body.preferences
   };
 
-  const user = await User.findByIdAndUpdate(req.user.id, fieldsToUpdate, {
-    new: true,
-    runValidators: true
-  });
+  const user = await User.findByPk(req.user.id);
+  if (!user) {
+    return next(new ErrorResponse('User not found', 404));
+  }
+
+  await user.update(fieldsToUpdate);
 
   res.status(200).json({
     success: true,
@@ -97,9 +85,12 @@ exports.updateDetails = asyncHandler(async (req, res, next) => {
 
 // Update password
 exports.updatePassword = asyncHandler(async (req, res, next) => {
-  const user = await User.findById(req.user.id).select('+password');
+  const user = await User.findByPk(req.user.id);
 
-  // Check current password
+  if (!user) {
+    return next(new ErrorResponse('User not found', 404));
+  }
+
   if (!(await user.matchPassword(req.body.currentPassword))) {
     return next(new ErrorResponse('Password is incorrect', 401));
   }
@@ -120,7 +111,6 @@ exports.logout = asyncHandler(async (req, res, next) => {
 
 // Get token from model, create cookie and send response
 const sendTokenResponse = (user, statusCode, res) => {
-  // Create token
   const token = user.getSignedJwtToken();
 
   const options = {
@@ -134,7 +124,7 @@ const sendTokenResponse = (user, statusCode, res) => {
     options.secure = true;
   }
 
-  const { _id, name, email, role, company, department, avatar } = user.toObject();
+  const { id, name, email, role, company, department, avatar } = user.toJSON();
 
   res
     .status(statusCode)
@@ -142,7 +132,7 @@ const sendTokenResponse = (user, statusCode, res) => {
       success: true,
       token,
       user: {
-        id: _id,
+        id,
         name,
         email,
         role,
@@ -152,4 +142,3 @@ const sendTokenResponse = (user, statusCode, res) => {
       }
     });
 };
-

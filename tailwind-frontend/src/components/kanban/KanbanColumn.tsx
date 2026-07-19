@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import TaskCard from '../dashboard/TaskCard';
+import { motion } from 'framer-motion';
 
 interface KanbanColumnProps {
   title: string;
@@ -36,18 +37,13 @@ export default function KanbanColumn({ title, tasks, columnId, onMove }: KanbanC
     const { taskId, fromStatus } = info;
     if (!taskId) return;
 
-    // Only allow forward progress: todo -> in-progress -> review -> done
-    const order = ['todo', 'in-progress', 'review', 'done'];
-    const fromIndex = order.indexOf(fromStatus || 'todo');
-    const toIndex = order.indexOf(columnId);
-    if (toIndex === -1) return; // unknown column
-    // disallow backward moves
-    if (toIndex <= fromIndex) return;
+    // Only update if moving to a different status column
+    if (fromStatus === columnId) return;
 
     // call API to reorder (backend endpoint: PUT /api/tasks/reorder)
     const base = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
     try {
-      await fetch(`${base}/tasks/reorder`, {
+      const res = await fetch(`${base}/tasks/reorder`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -56,10 +52,16 @@ export default function KanbanColumn({ title, tasks, columnId, onMove }: KanbanC
         body: JSON.stringify({ taskId, newStatus: columnId, newPosition: 0 })
       });
 
+      const data = await res.json();
+      if (!res.ok) {
+        window.alert(data.error || 'Failed to move task');
+      }
+
       // notify parent to refresh
       if (typeof onMove === 'function') onMove();
     } catch (err) {
       // ignore
+      console.error(err);
     }
   };
 
@@ -90,18 +92,36 @@ export default function KanbanColumn({ title, tasks, columnId, onMove }: KanbanC
       >
         {tasks.map((task) => {
           const tid = task._id || task.id || (task._doc && (task._doc._id || task._doc.id));
-          const fromStatus = (task.status && (task.status.toLowerCase())) || 'todo';
+          const rawStatus = task.status || 'todo';
+          const fromStatus = rawStatus.toLowerCase() === 'to do' || rawStatus.toLowerCase() === 'to-do' ? 'todo' :
+                             rawStatus.toLowerCase() === 'in progress' || rawStatus.toLowerCase() === 'in_progress' ? 'in-progress' :
+                             rawStatus.toLowerCase();
           return (
-            <div
+            <motion.div
               key={tid || task.id}
+              layout
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ type: 'spring', stiffness: 350, damping: 25 }}
               draggable
               onDragStart={(e) => {
                 const data = JSON.stringify({ taskId: tid || task.id, fromStatus });
                 e.dataTransfer.setData('application/json', data);
+                const target = e.currentTarget;
+                setTimeout(() => {
+                  target.classList.add('opacity-40', 'scale-95', 'rotate-2');
+                }, 0);
               }}
+              onDragEnd={(e) => {
+                e.currentTarget.classList.remove('opacity-40', 'scale-95', 'rotate-2');
+              }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="cursor-grab active:cursor-grabbing"
             >
               <TaskCard task={task} />
-            </div>
+            </motion.div>
           );
         })}
         

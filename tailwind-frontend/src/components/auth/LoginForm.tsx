@@ -14,7 +14,7 @@ function LoginForm() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { isLoading, error, user } = useAppSelector((state) => state.auth);
+  const { isLoading, error, user, isAuthenticated } = useAppSelector((state) => state.auth);
 
   const from = location.state?.from?.pathname || '/';
 
@@ -41,10 +41,17 @@ function LoginForm() {
   };
 
   useEffect(() => {
-    if (user) {
-      navigate(from, { replace: true });
+    if (user && isAuthenticated) {
+      // Direct executives to their respective dashboards by default
+      let startPath = from;
+      if (user.role === 'ceo') startPath = '/ceo-dashboard';
+      else if (user.role === 'cfo') startPath = '/cfo-dashboard';
+      else if (user.role === 'cto') startPath = '/cto-dashboard';
+      else if (user.role === 'cmo') startPath = '/cmo-dashboard';
+      
+      navigate(startPath, { replace: true });
     }
-  }, [user, navigate, from]);
+  }, [user, isAuthenticated, navigate, from]);
 
   useEffect(() => {
     if (error) {

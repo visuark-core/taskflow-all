@@ -4,6 +4,11 @@ interface User {
   id: string;
   email: string;
   name: string;
+  company?: string;
+  role?: string;
+  department?: string;
+  avatar?: string;
+  bio?: string;
 }
 
 interface AuthContextType {
@@ -39,14 +44,36 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     try {
       const storedUser = localStorage.getItem('user');
-      if (storedUser) {
+      const storedToken = localStorage.getItem('token');
+      if (storedUser && storedToken) {
         setUser(JSON.parse(storedUser));
+      } else {
+        // Clear inconsistent state
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        localStorage.removeItem('isAuth');
+        setUser(null);
       }
     } catch (err) {
       console.error('Failed to parse user from localStorage', err);
     } finally {
       setIsLoading(false);
     }
+
+    // Intercept 401 errors globally
+    const originalFetch = window.fetch;
+    window.fetch = async (...args) => {
+      const res = await originalFetch(...args);
+      if (res.status === 401) {
+        console.warn('Unauthorized request detected. Logging out...');
+        logout();
+      }
+      return res;
+    };
+
+    return () => {
+      window.fetch = originalFetch;
+    };
   }, []);
 
   // Real login - calls backend API
@@ -69,6 +96,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUser(user);
       localStorage.setItem('user', JSON.stringify(user));
       localStorage.setItem('token', token);
+      localStorage.setItem('isAuth', 'true');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
       throw err;
@@ -78,7 +106,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   // Real signup - calls backend API
-  const signup = async (name: string, email: string, password: string) => {
+  const signup = async (name: string, email: string, password: string, company?: string) => {
     setIsLoading(true);
     setError(null);
     try {
@@ -87,7 +115,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, email, password, company, role: 'admin', department: 'management' }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
@@ -97,6 +125,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUser(user);
       localStorage.setItem('user', JSON.stringify(user));
       localStorage.setItem('token', token);
+      localStorage.setItem('isAuth', 'true');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
       throw err;
@@ -114,7 +143,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const value: AuthContextType = {
     user,
-    isAuthenticated: !!user,
+    isAuthenticated: !!(user && localStorage.getItem('token')),
     isLoading,
     login,
     signup,

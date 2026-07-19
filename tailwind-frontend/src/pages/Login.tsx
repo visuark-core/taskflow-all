@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import LoginForm from '../components/auth/LoginForm';
  
 import { Sun, Moon } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { useAppSelector } from '../hooks/hook';
 
 function Login() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
   const navigate = useNavigate();
   
   useEffect(() => {

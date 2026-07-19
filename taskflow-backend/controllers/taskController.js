@@ -1,285 +1,241 @@
-// controllers/taskController.js
-const Task = require('../models/Task');
-const Project = require('../models/Project');
-const Activity = require('../models/Activity');
-const Notification = require('../models/Notification');
+const { Task, Project, User, Activity, TaskComment, TaskAttachment, TaskLabel } = require('../models');
 const asyncHandler = require('../utils/asyncHandler');
 const ErrorResponse = require('../utils/errorResponse');
+const { Op } = require('sequelize');
 
-// Get all tasks for a project
+const updateProjectStatus = async (projectId) => {
+  if (!projectId) return;
+  const project = await Project.findByPk(projectId);
+  if (!project) return;
+
+  const tasks = await Task.findAll({ where: { projectId } });
+  
+  if (tasks.length === 0) return;
+
+  const totalTasks = tasks.length;
+  const completedTasks = tasks.filter(t => t.status === 'done').length;
+
+  let newStatus = project.status;
+  if (completedTasks === totalTasks && totalTasks > 0) {
+    newStatus = 'completed';
+  } else if (totalTasks > 0) {
+    if (['planning', 'completed'].includes(project.status)) {
+      newStatus = 'active';
+    }
+  }
+
+  if (newStatus !== project.status) {
+    await project.update({ status: newStatus });
+  }
+};
+
+exports.getAllTasks = asyncHandler(async (req, res, next) => {
+  const tasks = await Task.findAll({
+    include: [
+      { model: User, as: 'assignee', attributes: ['id', 'name', 'avatar'] },
+      { model: Project, attributes: ['id', 'name'] },
+      { model: TaskLabel, as: 'labels' }
+    ],
+    order: [['position', 'ASC'], ['createdAt', 'DESC']]
+  });
+
+  res.status(200).json({ success: true, count: tasks.length, data: tasks });
+});
+
 exports.getTasks = asyncHandler(async (req, res, next) => {
-  const tasks = await Task.find({ project: req.params.projectId })
-    .populate('assignee', 'name email avatar')
-    .populate('assignedBy', 'name email avatar')
-    .sort('position');
-
-  res.status(200).json({
-    success: true,
-    count: tasks.length,
-    data: tasks
+  const tasks = await Task.findAll({
+    where: { projectId: req.params.projectId },
+    include: [
+      { model: User, as: 'assignee', attributes: ['id', 'name', 'avatar'] },
+      { model: Project, attributes: ['id', 'name'] },
+      { model: TaskLabel, as: 'labels' }
+    ],
+    order: [['position', 'ASC'], ['createdAt', 'DESC']]
   });
+
+  res.status(200).json({ success: true, count: tasks.length, data: tasks });
 });
 
-// Get single task
+exports.getMyTasks = asyncHandler(async (req, res, next) => {
+  const tasks = await Task.findAll({
+    where: {
+      [Op.or]: [
+        { assigneeId: req.user.id },
+        { assignedById: req.user.id }
+      ]
+    },
+    include: [
+      { model: User, as: 'assignee', attributes: ['id', 'name', 'avatar'] },
+      { model: Project, attributes: ['id', 'name'] },
+      { model: TaskLabel, as: 'labels' }
+    ],
+    order: [['position', 'ASC'], ['createdAt', 'DESC']]
+  });
+
+  res.status(200).json({ success: true, count: tasks.length, data: tasks });
+});
+
 exports.getTask = asyncHandler(async (req, res, next) => {
-  const task = await Task.findById(req.params.id)
-    .populate('assignee', 'name email avatar')
-    .populate('assignedBy', 'name email avatar')
-    .populate('project', 'name')
-    .populate('comments.user', 'name email avatar');
-
-  if (!task) {
-    return next(new ErrorResponse(`Task not found with id of ${req.params.id}`, 404));
-  }
-
-  res.status(200).json({
-    success: true,
-    data: task
+  const task = await Task.findByPk(req.params.id, {
+    include: [
+      { model: User, as: 'assignee', attributes: ['id', 'name', 'avatar'] },
+      { model: User, as: 'assignedBy', attributes: ['id', 'name', 'avatar'] },
+      { model: Project, attributes: ['id', 'name'] },
+      { model: TaskComment, as: 'comments', include: [{ model: User, attributes: ['id', 'name', 'avatar'] }] },
+      { model: TaskAttachment, as: 'attachments' },
+      { model: TaskLabel, as: 'labels' }
+    ]
   });
+
+  if (!task) return next(new ErrorResponse('Task not found', 404));
+  res.status(200).json({ success: true, data: task });
 });
 
-// Create new task
 exports.createTask = asyncHandler(async (req, res, next) => {
-  req.body.assignedBy = req.user.id;
-
-  // Check if project exists and user has access
-  const project = await Project.findById(req.body.project);
-  if (!project) {
-    return next(new ErrorResponse('Project not found', 404));
+  req.body.assignedById = req.user.id;
+  
+  if (req.body.project) {
+    req.body.projectId = req.body.project;
+  }
+  if (req.body.assignee) {
+    req.body.assigneeId = req.body.assignee;
   }
 
-  const hasAccess = project.owner.equals(req.user.id) || 
-                   project.members.some(member => member.user.equals(req.user.id));
-
-  if (!hasAccess) {
-    return next(new ErrorResponse('Not authorized to create tasks in this project', 403));
+  const projId = req.body.projectId;
+  if (projId && req.body.dueDate) {
+    const project = await Project.findByPk(projId);
+    if (project && project.dueDate) {
+      const projDate = new Date(project.dueDate);
+      const taskDate = new Date(req.body.dueDate);
+      if (taskDate > projDate) {
+        return next(new ErrorResponse(`Task due date cannot be after the project's deadline (${project.dueDate.toISOString().split('T')[0]})`, 400));
+      }
+    }
   }
 
   const task = await Task.create(req.body);
 
-  // Create activity
   await Activity.create({
+    userId: req.user.id,
+    projectId: task.projectId,
+    taskId: task.id,
     type: 'task_created',
-    description: `${req.user.name} created task "${task.title}"`,
-    user: req.user.id,
-    project: project._id,
-    task: task._id
+    description: `Created task ${task.title}`
   });
 
-  // Create notification if task is assigned
-  if (task.assignee && !task.assignee.equals(req.user.id)) {
-    await Notification.create({
-      recipient: task.assignee,
-      type: 'task_assigned',
-      title: 'New Task Assigned',
-      message: `${req.user.name} assigned you a new task: ${task.title}`,
-      link: `/tasks/${task._id}`,
-      relatedProject: project._id,
-      relatedTask: task._id
-    });
-  }
+  await updateProjectStatus(task.projectId);
 
-  // Emit socket event
-  req.io.to(`project-${project._id}`).emit('task-created', {
-    task,
-    user: req.user
-  });
-
-  res.status(201).json({
-    success: true,
-    data: task
-  });
+  res.status(201).json({ success: true, data: task });
 });
 
-// Update task
 exports.updateTask = asyncHandler(async (req, res, next) => {
-  let task = await Task.findById(req.params.id);
+  const task = await Task.findByPk(req.params.id);
+  if (!task) return next(new ErrorResponse('Task not found', 404));
 
-  if (!task) {
-    return next(new ErrorResponse(`Task not found with id of ${req.params.id}`, 404));
-  }
-
-  // Track changes for notifications
-  const previousAssignee = task.assignee;
-  const previousStatus = task.status;
-
-  task = await Task.findByIdAndUpdate(req.params.id, req.body, {
-    new: true,
-    runValidators: true
-  });
-
-  // Create activity
-  await Activity.create({
-    type: 'task_updated',
-    description: `${req.user.name} updated task "${task.title}"`,
-    user: req.user.id,
-    project: task.project,
-    task: task._id,
-    metadata: { changes: req.body }
-  });
-
-  // Handle notifications
-  if (req.body.assignee && req.body.assignee !== previousAssignee?.toString()) {
-    // Notify new assignee
-    if (req.body.assignee && req.body.assignee !== req.user.id.toString()) {
-      await Notification.create({
-        recipient: req.body.assignee,
-        type: 'task_assigned',
-        title: 'Task Assigned',
-        message: `${req.user.name} assigned you to task: ${task.title}`,
-        link: `/tasks/${task._id}`,
-        relatedProject: task.project,
-        relatedTask: task._id
-      });
+  // If user is just the assignee (not admin/manager and not the creator), they can only update status/checklist
+  const isManagerOrAdmin = ['admin', 'manager', 'ceo', 'cfo', 'cmo', 'cto'].includes(req.user.role);
+  const isAssigneeOnly = !isManagerOrAdmin && task.assignedById !== req.user.id && task.assigneeId === req.user.id;
+  if (isAssigneeOnly) {
+    const allowedKeys = ['checklist', 'status'];
+    const attemptedKeys = Object.keys(req.body);
+    const unauthorizedKeys = attemptedKeys.filter(key => !allowedKeys.includes(key));
+    if (unauthorizedKeys.length > 0) {
+      return next(new ErrorResponse('Assignees are not authorized to edit core task details', 403));
+    }
+    
+    if (req.body.status && req.body.status.toLowerCase() === 'done') {
+      return next(new ErrorResponse('Only managers and admins can mark a task as done', 403));
     }
   }
 
-  // If task was completed, create notification
-  if (req.body.status === 'done' && previousStatus !== 'done') {
-    await Activity.create({
-      type: 'task_completed',
-      description: `${req.user.name} completed task "${task.title}"`,
-      user: req.user.id,
-      project: task.project,
-      task: task._id
-    });
-
-    // Update project progress
-    const project = await Project.findById(task.project);
-    project.progress = await project.calculateProgress();
-    await project.save();
+  if (req.body.project) {
+    req.body.projectId = req.body.project;
+  }
+  if (req.body.assignee) {
+    req.body.assigneeId = req.body.assignee;
   }
 
-  // Emit socket event
-  req.io.to(`project-${task.project}`).emit('task-updated', {
-    task,
-    user: req.user
-  });
+  const projId = req.body.projectId || task.projectId;
+  if (projId && req.body.dueDate) {
+    const project = await Project.findByPk(projId);
+    if (project && project.dueDate) {
+      const projDate = new Date(project.dueDate);
+      const taskDate = new Date(req.body.dueDate);
+      if (taskDate > projDate) {
+        return next(new ErrorResponse(`Task due date cannot be after the project's deadline (${project.dueDate.toISOString().split('T')[0]})`, 400));
+      }
+    }
+  }
 
-  res.status(200).json({
-    success: true,
-    data: task
-  });
+  await task.update(req.body);
+
+  await updateProjectStatus(task.projectId);
+
+  res.status(200).json({ success: true, data: task });
 });
 
-// Delete task
 exports.deleteTask = asyncHandler(async (req, res, next) => {
-  const task = await Task.findById(req.params.id);
+  const task = await Task.findByPk(req.params.id);
+  if (!task) return next(new ErrorResponse('Task not found', 404));
 
-  if (!task) {
-    return next(new ErrorResponse(`Task not found with id of ${req.params.id}`, 404));
+  const isManagerOrAdmin = ['admin', 'manager', 'ceo', 'cfo', 'cmo', 'cto'].includes(req.user.role);
+  if (!isManagerOrAdmin && task.assignedById !== req.user.id) {
+    return next(new ErrorResponse('Not authorized to delete this task', 403));
   }
 
-  await task.remove();
+  const projId = task.projectId;
+  await task.destroy();
 
-  // Emit socket event
-  req.io.to(`project-${task.project}`).emit('task-deleted', {
-    taskId: task._id,
-    projectId: task.project,
-    user: req.user
-  });
+  await updateProjectStatus(projId);
 
-  res.status(200).json({
-    success: true,
-    data: {}
-  });
+  res.status(200).json({ success: true, data: {} });
 });
 
-// Add comment to task
 exports.addComment = asyncHandler(async (req, res, next) => {
-  const task = await Task.findById(req.params.id);
-
-  if (!task) {
-    return next(new ErrorResponse(`Task not found with id of ${req.params.id}`, 404));
-  }
-
-  const comment = {
-    user: req.user.id,
+  const comment = await TaskComment.create({
     text: req.body.text,
-    createdAt: Date.now()
-  };
-
-  task.comments.push(comment);
-  await task.save();
-
-  // Create activity
-  await Activity.create({
-    type: 'comment_added',
-    description: `${req.user.name} commented on task "${task.title}"`,
-    user: req.user.id,
-    project: task.project,
-    task: task._id,
-    metadata: { comment: req.body.text }
+    taskId: req.params.id,
+    userId: req.user.id
   });
 
-  // Notify assignee if comment is from someone else
-  if (task.assignee && !task.assignee.equals(req.user.id)) {
-    await Notification.create({
-      recipient: task.assignee,
-      type: 'comment_reply',
-      title: 'New Comment',
-      message: `${req.user.name} commented on "${task.title}"`,
-      link: `/tasks/${task._id}`,
-      relatedProject: task.project,
-      relatedTask: task._id
-    });
-  }
-
-  // Emit socket event
-  req.io.to(`project-${task.project}`).emit('comment-added', {
-    task,
-    comment,
-    user: req.user
-  });
-
-  res.status(200).json({
-    success: true,
-    data: task
-  });
+  res.status(201).json({ success: true, data: comment });
 });
 
-// Reorder tasks (drag and drop)
 exports.reorderTasks = asyncHandler(async (req, res, next) => {
-  const { taskId, newPosition, newStatus } = req.body;
+  const { taskId, newStatus, newPosition } = req.body;
+  const task = await Task.findByPk(taskId);
+  if (!task) return next(new ErrorResponse('Task not found', 404));
 
-  const task = await Task.findById(taskId);
-  if (!task) {
-    return next(new ErrorResponse('Task not found', 404));
+  const isManagerOrAdmin = ['admin', 'manager', 'ceo', 'cfo', 'cmo', 'cto'].includes(req.user.role);
+  const isAssigneeOnly = !isManagerOrAdmin && task.assignedById !== req.user.id && task.assigneeId === req.user.id;
+
+  if (isAssigneeOnly && newStatus && newStatus.toLowerCase() === 'done') {
+    return next(new ErrorResponse('Only managers and admins can mark a task as done', 403));
   }
 
-  // Update task position and status
-  task.position = newPosition;
-  if (newStatus) {
-    task.status = newStatus;
-  }
-  await task.save();
-
-  // Update positions of other tasks
-  const tasksToReorder = await Task.find({
-    project: task.project,
-    status: task.status,
-    _id: { $ne: taskId }
-  }).sort('position');
-
-  let position = 0;
-  for (const t of tasksToReorder) {
-    if (position === newPosition) position++;
-    t.position = position;
-    await t.save();
-    position++;
-  }
-
-  // Emit socket event
-  req.io.to(`project-${task.project}`).emit('tasks-reordered', {
-    projectId: task.project,
-    taskId,
-    newPosition,
-    newStatus
+  await task.update({
+    status: newStatus,
+    position: newPosition || 0
   });
 
-  res.status(200).json({
-    success: true,
-    data: { message: 'Tasks reordered successfully' }
-  });
+  await updateProjectStatus(task.projectId);
+
+  res.status(200).json({ success: true, data: task });
 });
 
+exports.addAttachment = asyncHandler(async (req, res, next) => {
+  if (!req.file) {
+    return next(new ErrorResponse('Please upload a file', 400));
+  }
+
+  const task = await Task.findByPk(req.params.id);
+  if (!task) return next(new ErrorResponse('Task not found', 404));
+
+  const attachment = await TaskAttachment.create({
+    filename: req.file.originalname,
+    url: `/uploads/${req.file.filename}`,
+    taskId: task.id
+  });
+
+  res.status(201).json({ success: true, data: attachment });
+});

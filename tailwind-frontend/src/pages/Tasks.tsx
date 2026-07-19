@@ -39,26 +39,40 @@ export default function Tasks() {
 
   // Fetch all tasks across projects
   const fetchAllTasks = React.useCallback(async () => {
-    if (!projects || projects.length === 0) {
-      setTasks([]);
-      return;
-    }
     setLoading(true);
     try {
       const base = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      const responses = await Promise.allSettled(projects.map((p: any) =>
+      const promises = projects ? projects.map((p: any) =>
         fetch(`${base}/tasks/project/${p._id || p.id}`, {
           headers: { Authorization: `Bearer ${token}` }
         })
-      ));
+      ) : [];
+      
+      // Also fetch tasks explicitly assigned to or created by the user
+      promises.push(
+        fetch(`${base}/tasks/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      );
+
+      const responses = await Promise.allSettled(promises);
 
       const allTasks: any[] = [];
+      const seenTaskIds = new Set();
+      
       for (const r of responses) {
         if (r.status === 'fulfilled') {
           try {
             const json = await r.value.json();
             const data = json.data || json.tasks || [];
-            allTasks.push(...data);
+            
+            for (const task of data) {
+              const taskId = task.id || task._id;
+              if (!seenTaskIds.has(taskId)) {
+                seenTaskIds.add(taskId);
+                allTasks.push(task);
+              }
+            }
           } catch (e) {
             // ignore parse errors per project
           }

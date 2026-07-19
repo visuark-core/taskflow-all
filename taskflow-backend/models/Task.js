@@ -1,98 +1,45 @@
-// models/Task.js
-const mongoose = require('mongoose');
+const { DataTypes } = require("sequelize");
+const sequelize = require("../config/db");
 
-const taskSchema = new mongoose.Schema({
+const Task = sequelize.define("Task", {
+  id: {
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
+    primaryKey: true,
+  },
   title: {
-    type: String,
-    required: [true, 'Please add a task title'],
-    trim: true
+    type: DataTypes.STRING,
+    allowNull: false,
+    validate: {
+      notEmpty: true,
+    },
   },
   description: {
-    type: String
+    type: DataTypes.TEXT,
   },
   status: {
-    type: String,
-    enum: ['todo', 'in-progress', 'review', 'done'],
-    default: 'todo'
+    type: DataTypes.ENUM("todo", "in-progress", "review", "done"),
+    defaultValue: "todo",
   },
   priority: {
-    type: String,
-    enum: ['low', 'medium', 'high', 'urgent'],
-    default: 'medium'
+    type: DataTypes.ENUM("low", "medium", "high", "urgent"),
+    defaultValue: "medium",
   },
   dueDate: {
-    type: Date
+    type: DataTypes.DATE,
   },
-  project: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Project',
-    required: true
-  },
-  assignee: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  },
-  assignedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  labels: [{
-    name: String,
-    color: String
-  }],
-  attachments: [{
-    filename: String,
-    url: String,
-    uploadedAt: {
-      type: Date,
-      default: Date.now
-    }
-  }],
-  comments: [{
-    user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    },
-    text: String,
-    createdAt: {
-      type: Date,
-      default: Date.now
-    }
-  }],
   position: {
-    type: Number,
-    default: 0
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
   },
   timeTracking: {
-    estimated: Number, // in minutes
-    logged: Number, // in minutes
-    sessions: [{
-      startTime: Date,
-      endTime: Date,
-      duration: Number // in minutes
-    }]
+    type: DataTypes.JSON,
+    // Store: { estimated: Number, logged: Number, sessions: [...] }
   },
-  createdAt: {
-    type: Date,
-    default: Date.now
+  checklist: {
+    type: DataTypes.JSON,
+    defaultValue: [],
   },
-  updatedAt: {
-    type: Date,
-    default: Date.now
-  }
 });
 
-// Update the updatedAt field before saving
-taskSchema.pre('save', function(next) {
-  this.updatedAt = Date.now();
-  next();
-});
-
-// Virtual for formatted due date
-taskSchema.virtual('isOverdue').get(function() {
-  return this.dueDate && this.dueDate < new Date() && this.status !== 'done';
-});
-
-module.exports = mongoose.model('Task', taskSchema);
-
+module.exports = Task;

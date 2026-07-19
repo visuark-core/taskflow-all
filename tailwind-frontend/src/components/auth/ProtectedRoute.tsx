@@ -1,9 +1,8 @@
 import { Navigate, useLocation } from 'react-router-dom';
  
 import { ReactNode } from 'react';
-import { useAuth } from '../../context/AuthContexlt';
+import { useAuth } from '../../context/AuthContext';
 import { useAppSelector } from '../../hooks/hook';
-
 interface ProtectedRouteProps {
   children: ReactNode;
 }

@@ -8,6 +8,12 @@ import Tasks from './pages/Tasks';
 import TaskDetail from './pages/TaskDetail';
 import Team from './pages/Team';
 import MemberDetail from './pages/MemberDetail';
+import Departments from './pages/Departments';
+import UserManagement from './pages/UserManagement';
+import CEODashboard from './pages/CEODashboard';
+import CFODashboard from './pages/CFODashboard';
+import CTODashboard from './pages/CTODashboard';
+import CMODashboard from './pages/CMODashboard';
 import Calendar from './pages/Calendar';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
@@ -16,6 +22,8 @@ import NotFound from './pages/NotFound';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Profile from './pages/Profile';
+import Notifications from './pages/Notifications';
+import CompanyTree from './pages/CompanyTree';
  
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
@@ -50,12 +58,21 @@ function App() {
           <Route path="projects" element={<Projects />} />
           <Route path="projects/:id" element={<ProjectDetail />} />
           <Route path="tasks" element={<Tasks />} />
+          <Route path="tasks/new" element={<Navigate to="/tasks" replace />} />
           <Route path="tasks/:id" element={<TaskDetail />} />
           <Route path="team" element={<Team />} />
           <Route path="team/:id" element={<MemberDetail />} />
+          <Route path="user-management" element={<UserManagement />} />
+          <Route path="departments" element={<Departments />} />
+          <Route path="ceo-dashboard" element={<CEODashboard />} />
+          <Route path="cfo-dashboard" element={<CFODashboard />} />
+          <Route path="cto-dashboard" element={<CTODashboard />} />
+          <Route path="cmo-dashboard" element={<CMODashboard />} />
           <Route path="calendar" element={<Calendar />} />
           <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="notifications" element={<Notifications />} />
+          <Route path="company-tree" element={<CompanyTree />} />
           <Route path="kanban" element={<KanbanBoard />} />
           <Route path="*" element={<NotFound />} />
         </Route>

@@ -2,13 +2,12 @@
 const jwt = require('jsonwebtoken');
 const asyncHandler = require('../utils/asyncHandler');
 const ErrorResponse = require('../utils/errorResponse');
-const User = require('../models/User');
+const { User } = require('../models');
 
 // Protect routes - verifies JWT and attaches user to req
 exports.protect = asyncHandler(async (req, res, next) => {
   let token;
 
-  // Check for token in Authorization header (Bearer token)
   if (
     req.headers.authorization &&
     req.headers.authorization.startsWith('Bearer')
@@ -18,28 +17,24 @@ exports.protect = asyncHandler(async (req, res, next) => {
 
   // If no token, deny access
   if (!token) {
-    console.log("No token found in request headers");
     return next(new ErrorResponse('Not authorized to access this route', 401));
   }
 
   try {
     // Verify token using JWT secret from env variables
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log("Decoded JWT payload:", decoded);
 
     // Find user by ID embedded in token payload
-    req.user = await User.findById(decoded.id);
+    req.user = await User.findByPk(decoded.id);
 
     // If user not found, deny access
     if (!req.user) {
-      console.log("User not found for ID in token");
       return next(new ErrorResponse('User not found with this token', 401));
     }
 
     // User found and authenticated - proceed to next middleware
     next();
   } catch (err) {
-    console.log("JWT verification error:", err.message);
     return next(new ErrorResponse('Not authorized to access this route', 401));
   }
 });

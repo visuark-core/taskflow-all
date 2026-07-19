@@ -10,6 +10,8 @@ interface User {
   role: string;
   preferences: any;
   department?: string;
+  company?: string;
+  avatar?: string;
   bio?: string;
 }
 
@@ -22,6 +24,8 @@ const normalizeUser = (user: any): User => ({
   role: user.role,
   preferences: user.preferences,
   department: user.department,
+  company: user.company,
+  avatar: user.avatar,
   bio: user.bio,
 });
 
@@ -62,6 +66,14 @@ interface LoginResponse {
   token: string;
 }
 
+/** Payload for profile update */
+export interface UpdateProfilePayload {
+  name: string;
+  email: string;
+  company?: string;
+  bio?: string;
+}
+
 /** Parse user from localStorage and normalize */
 let parsedUser: User | null = null;
 try {
@@ -79,7 +91,7 @@ const initialState: AuthState = {
   user: parsedUser,
   isLoading: false,
   error: null,
-  isAuthenticated: localStorage.getItem("isAuth") === "true",
+  isAuthenticated: !!(localStorage.getItem("isAuth") === "true" && localStorage.getItem("token")),
 };
 
 /**
@@ -138,6 +150,75 @@ export const loginUser = createAsyncThunk<
       return rejectWithValue(error.response.data.message || "Login failed.");
     }
     return rejectWithValue("An unknown error occurred.");
+  }
+});
+
+/**
+ * Async thunk to update user profile
+ */
+export const updateUserProfile = createAsyncThunk<
+  { success: boolean; user: User },
+  UpdateProfilePayload,
+  { rejectValue: string }
+>("auth/updateUserProfile", async (profileData, { getState, rejectWithValue }) => {
+  try {
+    const state = getState() as { auth: AuthState };
+    const token = state.auth.token;
+    const res = await axios.put<{ success: boolean; user: any }>(
+      "http://localhost:5000/api/users/me",
+      profileData,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+      }
+    );
+    return {
+      success: res.data.success,
+      user: normalizeUser(res.data.user)
+    };
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      return rejectWithValue(error.response?.data?.message || error.response?.data?.error || "Update failed");
+    }
+    return rejectWithValue("An unknown error occurred");
+  }
+});
+
+/**
+ * Async thunk to upload user avatar
+ */
+export const uploadUserAvatar = createAsyncThunk<
+  { success: boolean; user: User },
+  File,
+  { rejectValue: string }
+>("auth/uploadUserAvatar", async (file, { getState, rejectWithValue }) => {
+  try {
+    const state = getState() as { auth: AuthState };
+    const token = state.auth.token;
+    const formData = new FormData();
+    formData.append("avatar", file);
+
+    const res = await axios.post<{ success: boolean; user: any }>(
+      "http://localhost:5000/api/users/avatar",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`
+        },
+      }
+    );
+    return {
+      success: res.data.success,
+      user: normalizeUser(res.data.user)
+    };
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      return rejectWithValue(error.response?.data?.message || error.response?.data?.error || "Upload failed");
+    }
+    return rejectWithValue("An unknown error occurred");
   }
 });
 
@@ -201,6 +282,38 @@ const authSlice = createSlice({
       .addCase(loginUser.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload ?? "Failed to login.";
+      });
+
+    // Update Profile handlers
+    builder
+      .addCase(updateUserProfile.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(updateUserProfile.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.user = action.payload.user;
+        localStorage.setItem("user", JSON.stringify(action.payload.user));
+      })
+      .addCase(updateUserProfile.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload ?? "Failed to update profile.";
+      });
+
+    // Upload Avatar handlers
+    builder
+      .addCase(uploadUserAvatar.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(uploadUserAvatar.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.user = action.payload.user;
+        localStorage.setItem("user", JSON.stringify(action.payload.user));
+      })
+      .addCase(uploadUserAvatar.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload ?? "Failed to upload avatar.";
       });
   },
 });
