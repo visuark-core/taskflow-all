@@ -1166,6 +1166,7 @@ export default function Billing() {
                   <X className="h-5 w-5" />
                 </button>
               </div>
+            </div>
                 {/* Printable Invoice Page */}
             <div className="p-8 md:p-12 pb-24 space-y-8 flex-1 bg-white text-gray-850 dark:bg-gray-900 dark:text-gray-150 print:bg-white print:text-black print:pb-28 relative print:min-h-screen">
               
