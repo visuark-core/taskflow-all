@@ -1151,6 +1151,19 @@ export default function Billing() {
                   </div>
                 )}
                 
+                {isAdminOrManager && detailedInvoice.status === 'draft' && (
+                  <button
+                    onClick={() => {
+                      setIsDetailOpen(false);
+                      handleOpenEditInvoiceModal(detailedInvoice);
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-3.5 py-2 text-xs font-semibold shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <Pencil className="h-4 w-4 text-blue-500" />
+                    Edit Invoice
+                  </button>
+                )}
+
                 <button
                   onClick={handlePrint}
                   className="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 hover:bg-primary-500 text-white px-3.5 py-2 text-xs font-semibold shadow-sm transition-colors"
