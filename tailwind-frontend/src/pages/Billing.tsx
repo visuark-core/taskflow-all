@@ -138,6 +138,48 @@ export default function Billing() {
     description: ''
   });
 
+  // Agency Billing Settings state
+  interface AgencyBillingSettings {
+    upiId: string;
+    phone: string;
+    address: string;
+    greeting: string;
+    authorizedName: string;
+  }
+
+  const [agencySettings, setAgencySettings] = useState<AgencyBillingSettings>(() => {
+    const saved = localStorage.getItem('agency_billing_settings');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        // Fallback
+      }
+    }
+    return {
+      upiId: 'mastersunil@yesg',
+      phone: '+91 8619949455',
+      address: 'I Start Incubation Center, Jodhpur',
+      greeting: 'Thank you for be a part of VISUARK!',
+      authorizedName: 'Authorized Signed'
+    };
+  });
+
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [settingsForm, setSettingsForm] = useState<AgencyBillingSettings>({ ...agencySettings });
+
+  // Sync settingsForm when modal opens or agencySettings changes
+  useEffect(() => {
+    setSettingsForm({ ...agencySettings });
+  }, [agencySettings]);
+
+  const handleSaveSettings = (e: React.FormEvent) => {
+    e.preventDefault();
+    setAgencySettings(settingsForm);
+    localStorage.setItem('agency_billing_settings', JSON.stringify(settingsForm));
+    setIsSettingsModalOpen(false);
+  };
+
   // Load Invoices, Services, Projects, Clients
   const fetchAllData = async () => {
     try {
@@ -493,13 +535,23 @@ export default function Billing() {
           </div>
 
           {isAdminOrManager && (
-            <button
-              onClick={activeTab === 'invoices' ? handleOpenCreateInvoiceModal : handleOpenCreateServiceModal}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-primary-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-              {activeTab === 'invoices' ? 'Create Invoice' : 'Add Service'}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsSettingsModalOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-350 px-3 py-2 text-xs font-semibold shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                title="Edit print layout settings (UPI, greeting, phone, address)"
+              >
+                <Settings className="h-4 w-4" />
+                Bill Settings
+              </button>
+              <button
+                onClick={activeTab === 'invoices' ? handleOpenCreateInvoiceModal : handleOpenCreateServiceModal}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-primary-500 transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                {activeTab === 'invoices' ? 'Create Invoice' : 'Add Service'}
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -1101,6 +1153,118 @@ export default function Billing() {
         </div>
       )}
 
+      {/* --- Agency Bill Print Settings Modal --- */}
+      {isSettingsModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in print:hidden">
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col border border-gray-200 dark:border-gray-800 animate-scale-up">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/40">
+              <div className="flex items-center gap-2">
+                <Settings className="h-5 w-5 text-primary-500" />
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+                  Edit Bill Print Settings
+                </h3>
+              </div>
+              <button 
+                onClick={() => setIsSettingsModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveSettings}>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-555 uppercase mb-1">
+                    UPI ID for Payments *
+                  </label>
+                  <input 
+                    type="text"
+                    required
+                    value={settingsForm.upiId}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, upiId: e.target.value })}
+                    placeholder="e.g. mastersunil@yesg"
+                    className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-855 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-555 uppercase mb-1">
+                    Contact Phone Number *
+                  </label>
+                  <input 
+                    type="text"
+                    required
+                    value={settingsForm.phone}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, phone: e.target.value })}
+                    placeholder="e.g. +91 8619949455"
+                    className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-855 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-555 uppercase mb-1">
+                    Greeting Message *
+                  </label>
+                  <input 
+                    type="text"
+                    required
+                    value={settingsForm.greeting}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, greeting: e.target.value })}
+                    placeholder="e.g. Thank you for be a part of VISUARK!"
+                    className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-855 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-555 uppercase mb-1">
+                    Authorized Signer Label *
+                  </label>
+                  <input 
+                    type="text"
+                    required
+                    value={settingsForm.authorizedName}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, authorizedName: e.target.value })}
+                    placeholder="e.g. Authorized Signed"
+                    className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-855 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-555 uppercase mb-1">
+                    Office Address / Location *
+                  </label>
+                  <textarea 
+                    rows={2}
+                    required
+                    value={settingsForm.address}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, address: e.target.value })}
+                    placeholder="e.g. I Start Incubation Center, Jodhpur"
+                    className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-855 dark:text-gray-100 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  />
+                </div>
+              </div>
+
+              <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/40 flex justify-end gap-3">
+                <button 
+                  type="button"
+                  onClick={() => setIsSettingsModalOpen(false)}
+                  className="btn border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-350 px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  className="btn btn-primary bg-primary-600 hover:bg-primary-500 text-white px-4 py-2 text-sm transition-colors shadow-sm"
+                >
+                  Save Settings
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* --- Detailed Invoice View (Drawer / Printing layout) --- */}
       {isDetailOpen && detailedInvoice && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-2 md:p-6 overflow-y-auto animate-fade-in print:bg-white print:p-0 print:static print:overflow-visible">
@@ -1311,12 +1475,12 @@ export default function Billing() {
                   <div>
                     <span className="block text-xs font-bold text-gray-900 dark:text-gray-100 print:text-black uppercase tracking-wider">Payment Method</span>
                     <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 print:text-black mt-1">
-                      UPI ID: mastersunil@yesg
+                      UPI ID: {agencySettings.upiId}
                     </div>
                   </div>
                   
                   <div className="text-lg font-bold text-gray-900 dark:text-gray-100 print:text-black font-sans leading-snug">
-                    Thank you for be a part of VISUARK!
+                    {agencySettings.greeting}
                   </div>
                 </div>
 
@@ -1379,7 +1543,7 @@ export default function Billing() {
                   </div>
                   
                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1 text-center">
-                    Authorized Signed
+                    {agencySettings.authorizedName}
                   </span>
                 </div>
 
@@ -1389,11 +1553,11 @@ export default function Billing() {
               <div className="mt-8 bg-gradient-to-r from-blue-950 to-sky-500 text-white py-3 px-6 rounded-lg flex flex-col sm:flex-row justify-between items-center gap-2 text-xs font-semibold tracking-wide print:rounded-none print:absolute print:bottom-0 print:left-0 print:right-0 print:w-full print:px-8">
                 <div className="flex items-center gap-2">
                   <Phone className="h-4 w-4 text-sky-200" />
-                  <span>+91 8619949455</span>
+                  <span>{agencySettings.phone}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-sky-200" />
-                  <span>I Start Incubation Center, Jodhpur</span>
+                  <span>{agencySettings.address}</span>
                 </div>
               </div>
 
