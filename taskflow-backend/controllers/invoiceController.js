@@ -56,11 +56,6 @@ exports.getInvoice = asyncHandler(async (req, res, next) => {
 // @route   POST /api/invoices
 // @access  Private (Admin/Manager/Executive)
 exports.createInvoice = asyncHandler(async (req, res, next) => {
-  const authorizedRoles = ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'];
-  if (!authorizedRoles.includes(req.user.role)) {
-    return next(new ErrorResponse('Not authorized to create invoices', 403));
-  }
-
   const { 
     invoiceNumber, 
     issueDate, 
@@ -157,11 +152,6 @@ exports.createInvoice = asyncHandler(async (req, res, next) => {
 // @route   PUT /api/invoices/:id
 // @access  Private (Admin/Manager/Executive)
 exports.updateInvoice = asyncHandler(async (req, res, next) => {
-  const authorizedRoles = ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'];
-  if (!authorizedRoles.includes(req.user.role)) {
-    return next(new ErrorResponse('Not authorized to update invoices', 403));
-  }
-
   let invoice = await Invoice.findByPk(req.params.id);
 
   if (!invoice) {
@@ -269,11 +259,6 @@ exports.updateInvoice = asyncHandler(async (req, res, next) => {
 // @route   DELETE /api/invoices/:id
 // @access  Private (Admin/Manager/Executive)
 exports.deleteInvoice = asyncHandler(async (req, res, next) => {
-  const authorizedRoles = ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'];
-  if (!authorizedRoles.includes(req.user.role)) {
-    return next(new ErrorResponse('Not authorized to delete invoices', 403));
-  }
-
   const invoice = await Invoice.findByPk(req.params.id);
 
   if (!invoice) {
