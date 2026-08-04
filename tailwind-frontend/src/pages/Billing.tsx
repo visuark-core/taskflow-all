@@ -1169,10 +1169,10 @@ export default function Billing() {
               </div>
             </div>
                 {/* Printable Invoice Page */}
-            <div className="p-8 md:p-12 pb-24 space-y-8 flex-1 overflow-y-auto bg-white text-gray-850 dark:bg-gray-900 dark:text-gray-150 print:bg-white print:text-black print:pb-28 relative print:overflow-visible print:h-auto print:p-8">
+            <div className="p-8 md:p-12 pb-24 space-y-8 flex-1 overflow-y-auto bg-white text-gray-850 dark:bg-gray-900 dark:text-gray-150 print:bg-white print:text-black print:pb-16 relative print:overflow-hidden print:h-[28.2cm] print:max-h-[28.2cm] print:p-8 print:space-y-4">
               
               {/* Invoice Header */}
-              <div className="flex justify-between items-center pb-6 border-b border-gray-100 dark:border-gray-800 print:border-gray-200">
+              <div className="flex justify-between items-center pb-6 print:pb-3 border-b border-gray-100 dark:border-gray-800 print:border-gray-200">
                 <div>
                   <img 
                     src="/logo.png" 
@@ -1190,7 +1190,7 @@ export default function Billing() {
               </div>
 
               {/* Client & Project Addresses and Metadata */}
-              <div className="grid grid-cols-2 gap-8 text-xs pt-4">
+              <div className="grid grid-cols-2 gap-8 text-xs pt-4 print:pt-2">
                 <div className="space-y-1">
                   <span className="block text-sm font-bold text-gray-950 dark:text-gray-100 print:text-black">Invoice to:</span>
                   <div className="text-base font-bold text-gray-900 dark:text-gray-100 print:text-black">
@@ -1236,7 +1236,7 @@ export default function Billing() {
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-800 text-gray-700 dark:text-gray-300 print:divide-gray-300 print:text-black">
                     {detailedInvoice.items?.map((item) => (
                       <tr key={item.id} className="border-b border-gray-150 dark:border-gray-800 print:border-gray-200">
-                        <td className="px-2 py-4 text-gray-900 dark:text-gray-150 print:text-black">
+                        <td className="px-2 py-4 print:py-2 text-gray-900 dark:text-gray-150 print:text-black">
                           <div className="font-bold text-xs">{item.serviceName}</div>
                           {item.description && (
                             <div className="text-[10px] font-normal text-gray-500 dark:text-gray-400 mt-0.5 whitespace-pre-line leading-relaxed">
@@ -1244,13 +1244,13 @@ export default function Billing() {
                             </div>
                           )}
                         </td>
-                        <td className="px-2 py-4 text-center">
+                        <td className="px-2 py-4 print:py-2 text-center">
                           {item.quantity}
                         </td>
-                        <td className="px-2 py-4 text-right">
+                        <td className="px-2 py-4 print:py-2 text-right">
                           ₹{item.rate.toFixed(2)}
                         </td>
-                        <td className="px-2 py-4 text-right font-bold text-gray-950 dark:text-gray-100 print:text-black">
+                        <td className="px-2 py-4 print:py-2 text-right font-bold text-gray-950 dark:text-gray-100 print:text-black">
                           ₹{item.amount.toFixed(2)}
                         </td>
                       </tr>
@@ -1260,7 +1260,7 @@ export default function Billing() {
               </div>
 
               {/* Summary Totals Calculation */}
-              <div className="flex flex-col items-end pt-4 space-y-2 border-t-2 border-gray-900 dark:border-gray-800 print:border-black">
+              <div className="flex flex-col items-end pt-4 print:pt-2 space-y-2 border-t-2 border-gray-900 dark:border-gray-800 print:border-black">
                 <div className="flex justify-between w-64 text-xs font-semibold text-gray-800 dark:text-gray-200 print:text-black">
                   <span>Subtotal</span>
                   <span>₹{(detailedInvoice.items?.reduce((acc, curr) => acc + curr.amount, 0) || 0).toFixed(2)}</span>
@@ -1291,10 +1291,10 @@ export default function Billing() {
               </div>
 
               {/* Payment Details, Greeting, Seal & Signature Section */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-gray-100 dark:border-gray-800 items-end relative print:border-gray-200">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 print:pt-3 border-t border-gray-100 dark:border-gray-800 items-end relative print:border-gray-200 print:gap-4">
                 
                 {/* Left Side: Payment Method & Greeting */}
-                <div className="space-y-6">
+                <div className="space-y-6 print:space-y-3">
                   <div>
                     <span className="block text-xs font-bold text-gray-900 dark:text-gray-100 print:text-black uppercase tracking-wider">Payment Method</span>
                     <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 print:text-black mt-1">
