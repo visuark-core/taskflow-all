@@ -13,6 +13,8 @@ const Task = require("./Task");
 const Activity = require("./Activity");
 const Message = require("./Message");
 const Notification = require("./Notification");
+const SalaryDetail = require("./SalaryDetail");
+const SalaryPayout = require("./SalaryPayout");
 
 // Define Join Tables / Sub-models
 
@@ -149,6 +151,13 @@ Client.hasMany(Invoice, { foreignKey: 'clientId', as: 'invoices' });
 InvoiceItem.belongsTo(Invoice, { foreignKey: 'invoiceId', as: 'invoice', onDelete: 'CASCADE' });
 Invoice.hasMany(InvoiceItem, { foreignKey: 'invoiceId', as: 'items', onDelete: 'CASCADE' });
 
+// --- Salary/Payroll Associations ---
+SalaryDetail.belongsTo(User, { as: "user", foreignKey: "userId" });
+User.hasOne(SalaryDetail, { as: "salaryDetail", foreignKey: "userId", onDelete: "CASCADE" });
+
+SalaryPayout.belongsTo(User, { as: "user", foreignKey: "userId" });
+User.hasMany(SalaryPayout, { as: "salaryPayouts", foreignKey: "userId", onDelete: "CASCADE" });
+
 module.exports = {
   sequelize,
   User,
@@ -163,6 +172,8 @@ module.exports = {
   Activity,
   Message,
   Notification,
+  SalaryDetail,
+  SalaryPayout,
   ProjectMember,
   TeamMember,
   DepartmentMember,

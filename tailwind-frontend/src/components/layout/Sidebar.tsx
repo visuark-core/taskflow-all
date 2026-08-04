@@ -29,6 +29,7 @@ const navigation = [
   { name: 'Projects', href: '/projects', icon: Briefcase },
   { name: 'Clients', href: '/clients', icon: Handshake },
   { name: 'Billing', href: '/billing', icon: Receipt },
+  { name: 'Salary', href: '/salary', icon: Wallet },
   { name: 'Tasks', href: '/tasks', icon: CheckSquare },
   { name: 'Kanban Board', href: '/kanban', icon: Trello },
   { name: 'Company Tree', href: '/company-tree', icon: Network },

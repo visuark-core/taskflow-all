@@ -22,6 +22,7 @@ import Notifications from './pages/Notifications';
 import CompanyTree from './pages/CompanyTree';
 import Clients from './pages/Clients';
 import Billing from './pages/Billing';
+import Salary from './pages/Salary';
  
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
@@ -64,6 +65,7 @@ function App() {
           <Route path="departments" element={<Departments />} />
           <Route path="clients" element={<Clients />} />
           <Route path="billing" element={<Billing />} />
+          <Route path="salary" element={<Salary />} />
           <Route path="calendar" element={<Calendar />} />
           <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<Settings />} />

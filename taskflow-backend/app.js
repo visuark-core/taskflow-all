@@ -21,6 +21,7 @@ const activityRoutes = require('./routes/activities');
 const notificationRoutes = require('./routes/notifications');
 const reportRoutes = require('./routes/reports');
 const chatRoutes = require('./routes/chat');
+const salaryRoutes = require('./routes/salaries');
 
 const errorHandler = require('./middlewares/errorHandler');
 const { startCronJobs } = require('./utils/cronJobs');
@@ -61,6 +62,7 @@ app.use('/api/activities', activityRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/salaries', salaryRoutes);
 
 // Handle 404s
 app.use((req, res, next) => {
