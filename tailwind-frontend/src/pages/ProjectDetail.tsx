@@ -3,9 +3,10 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import Badge from '../components/ui/Badge';
 import Avatar from '../components/ui/Avatar';
 import { formatDate } from '../lib/utils';
-import { Users, ListChecks, Calendar, ArrowLeft, Info, User, Trash2, Edit, X } from 'lucide-react';
+import { Users, ListChecks, Calendar, ArrowLeft, Info, User, Trash2, Edit, X, Handshake, Receipt } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../app/store';
+import { Link as RouterLink } from 'react-router-dom';
 
 export default function ProjectDetail() {
   const { id } = useParams();
@@ -31,6 +32,11 @@ export default function ProjectDetail() {
   const [editStatus, setEditStatus] = useState('');
   const [editDueDate, setEditDueDate] = useState('');
   const [updatingProject, setUpdatingProject] = useState(false);
+  const [editClientId, setEditClientId] = useState('');
+  const [clients, setClients] = useState<any[]>([]);
+  const [editServiceId, setEditServiceId] = useState('');
+  const [editBudget, setEditBudget] = useState(0);
+  const [services, setServices] = useState<any[]>([]);
 
   // Check if current user can edit
   const canEdit = project && (
@@ -45,6 +51,9 @@ export default function ProjectDetail() {
     setEditDescription(project.description || '');
     setEditStatus(project.status || 'planning');
     setEditDueDate((project.endDate || project.dueDate) ? new Date(project.endDate || project.dueDate).toISOString().split('T')[0] : '');
+    setEditClientId(project.clientId || project.client?.id || '');
+    setEditServiceId(project.serviceId || project.service?.id || '');
+    setEditBudget(project.budget || 0);
     setIsEditModalOpen(true);
   };
 
@@ -77,18 +86,28 @@ export default function ProjectDetail() {
           description: editDescription,
           status: editStatus,
           dueDate: editDueDate ? new Date(editDueDate) : null,
-          endDate: editDueDate ? new Date(editDueDate) : null
+          endDate: editDueDate ? new Date(editDueDate) : null,
+          clientId: editClientId || null,
+          serviceId: editServiceId || null,
+          budget: parseFloat(editBudget as any) || 0
         })
       });
 
       const data = await response.json();
       if (data.success || response.ok) {
+        const selectedClient = clients.find(c => String(c.id) === String(editClientId));
+        const selectedService = services.find(s => String(s.id) === String(editServiceId));
         const updatedFields = {
           name: editName,
           description: editDescription,
           status: editStatus,
           endDate: editDueDate ? new Date(editDueDate) : null,
-          dueDate: editDueDate ? new Date(editDueDate) : null
+          dueDate: editDueDate ? new Date(editDueDate) : null,
+          clientId: editClientId || null,
+          client: selectedClient || null,
+          serviceId: editServiceId || null,
+          service: selectedService || null,
+          budget: parseFloat(editBudget as any) || 0
         };
         setProject((prev: any) => ({ ...prev, ...updatedFields }));
         setIsEditModalOpen(false);
@@ -132,6 +151,25 @@ export default function ProjectDetail() {
       .catch(() => setTasks([]));
   }, [id, token]);
 
+  // Fetch clients for project edit dropdown
+  useEffect(() => {
+    if (isEditModalOpen) {
+      fetch('http://localhost:5000/api/clients', {
+        headers: { Authorization: token ? `Bearer ${token}` : '' }
+      })
+        .then(res => res.json())
+        .then(data => setClients(data.data || []))
+        .catch(() => setClients([]));
+
+      fetch('http://localhost:5000/api/services', {
+        headers: { Authorization: token ? `Bearer ${token}` : '' }
+      })
+        .then(res => res.json())
+        .then(data => setServices(data.data || []))
+        .catch(() => setServices([]));
+    }
+  }, [isEditModalOpen, token]);
+
   if (loading) return <div className="py-12 text-center"><span className="text-lg">Loading...</span></div>;
   if (!project) return <div className="py-12 text-center"><span className="text-lg">Project not found.</span></div>;
 
@@ -173,9 +211,19 @@ export default function ProjectDetail() {
             <h1 className="text-2xl font-bold">{project.name}</h1>
             <Badge>{project.status}</Badge>
           </div>
-          <div className="flex items-center gap-4 mt-2 md:mt-0">
+          <div className="flex flex-wrap items-center gap-4 mt-2 md:mt-0">
             <span className="flex items-center gap-1 text-sm text-gray-500"><Calendar className="h-4 w-4" /> Due: {(project.endDate || project.dueDate) ? formatDate(new Date(project.endDate || project.dueDate)) : 'N/A'}</span>
             <span className="flex items-center gap-1 text-sm text-gray-500"><ListChecks className="h-4 w-4" /> Progress: {progressPercentage}%</span>
+            {project.client && (
+              <span className="flex items-center gap-1 text-sm text-gray-500">
+                <Handshake className="h-4 w-4 text-orange-500" /> Client: <RouterLink to="/clients" className="text-primary-600 hover:underline">{project.client.name}</RouterLink>
+              </span>
+            )}
+            {project.service && (
+              <span className="flex items-center gap-1 text-sm text-gray-500">
+                <Receipt className="h-4 w-4 text-teal-500" /> Service: <span className="font-semibold text-gray-700 dark:text-gray-250">{project.service.name}</span> (${project.budget || 0})
+              </span>
+            )}
             {canEdit && (
               <button
                 onClick={handleOpenEdit}
@@ -365,6 +413,57 @@ export default function ProjectDetail() {
                       className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
                     />
                   </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
+                      Client
+                    </label>
+                    <select
+                      value={editClientId}
+                      onChange={(e) => setEditClientId(e.target.value)}
+                      className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    >
+                      <option value="">No Client (Internal)</option>
+                      {clients.map((c: any) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} {c.company ? `(${c.company})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
+                      Service Type
+                    </label>
+                    <select
+                      value={editServiceId}
+                      onChange={(e) => setEditServiceId(e.target.value)}
+                      className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    >
+                      <option value="">No Service Type</option>
+                      {services.map((s: any) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
+                    Project Value ($ Service Price)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editBudget}
+                    onChange={(e) => setEditBudget(parseFloat(e.target.value) || 0)}
+                    className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  />
                 </div>
               </div>
 

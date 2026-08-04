@@ -27,6 +27,18 @@ export type Project = {
     total: number;
     completed: number;
   };
+  client?: {
+    id: number | string;
+    name: string;
+    company?: string;
+  };
+  clientId?: number | string;
+  service?: {
+    id: number | string;
+    name: string;
+  };
+  serviceId?: number | string;
+  budget?: number;
 };
 
 export type User = {

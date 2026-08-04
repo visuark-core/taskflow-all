@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { Filter, Search, Plus, ListFilter, LayoutGrid } from 'lucide-react';
+import { Filter, Search, Plus, ListFilter, LayoutGrid, Trash2 } from 'lucide-react';
 import TaskCard from '../components/dashboard/TaskCard';
 import NewProjectModal from '../components/modals/NewProjectModal';
 import Badge from '../components/ui/Badge';
 import NewTaskModal from '../components/modals/NewTaskModal';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../app/store';
 
 export default function Tasks() {
+  const currentUser = useSelector((state: RootState) => state.auth.user);
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const [view, setView] = useState<'grid' | 'list'>('grid');
   // filter keys: 'all', 'todo', 'in-progress', 'review', 'done'
@@ -113,6 +116,27 @@ export default function Tasks() {
     fetchAllTasks();
   };
 
+  const handleDeleteTask = async (taskId: string | number) => {
+    if (!window.confirm('Are you sure you want to delete this task?')) {
+      return;
+    }
+    try {
+      const base = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const res = await fetch(`${base}/tasks/${taskId}`, {
+        method: 'DELETE',
+        headers: { Authorization: token ? `Bearer ${token}` : '' }
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchAllTasks();
+      } else {
+        alert(data.error || 'Failed to delete task');
+      }
+    } catch {
+      alert('Failed to delete task');
+    }
+  };
+
   return (
     <div className="animate-fade-in space-y-6">
       <div className="flex items-center justify-between">
@@ -197,7 +221,12 @@ export default function Tasks() {
       ) : view === 'grid' ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredTasks.map(task => (
-            <TaskCard key={task._id || task.id} task={task} />
+            <TaskCard 
+              key={task._id || task.id} 
+              task={task} 
+              onDelete={handleDeleteTask}
+              showDelete={currentUser?.role === 'admin'}
+            />
           ))}
           {filteredTasks.length === 0 && (
             <div className="col-span-full py-12 text-center">
@@ -217,6 +246,9 @@ export default function Tasks() {
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Priority</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Assignee</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Due Date</th>
+                {currentUser?.role === 'admin' && (
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Actions</th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -275,6 +307,17 @@ export default function Tasks() {
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
                     {new Date(task.dueDate).toLocaleDateString()}
                   </td>
+                  {currentUser?.role === 'admin' && (
+                    <td className="whitespace-nowrap px-6 py-4">
+                      <button
+                        onClick={() => handleDeleteTask(task._id || task.id)}
+                        className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50 transition-colors"
+                        title="Delete Task"
+                      >
+                        <Trash2 size={13} /> Delete
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

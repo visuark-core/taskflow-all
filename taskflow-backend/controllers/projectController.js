@@ -1,4 +1,4 @@
-const { Project, User, Team, Task, Activity, ProjectMember, Notification } = require('../models');
+const { Project, User, Team, Task, Activity, ProjectMember, Notification, Client, Service } = require('../models');
 const asyncHandler = require('../utils/asyncHandler');
 const ErrorResponse = require('../utils/errorResponse');
 const { Op } = require('sequelize');
@@ -22,7 +22,9 @@ exports.getProjects = asyncHandler(async (req, res, next) => {
     include: [
       { model: User, as: 'owner', attributes: ['id', 'name'] },
       { model: Team, attributes: ['id', 'name'] },
-      { model: User, as: 'members', attributes: ['id', 'name'] }
+      { model: User, as: 'members', attributes: ['id', 'name'] },
+      { model: Client, as: 'client', attributes: ['id', 'name', 'company'] },
+      { model: Service, as: 'service', attributes: ['id', 'name'] }
     ],
     order: [['createdAt', 'DESC']]
   });
@@ -60,7 +62,9 @@ exports.getProject = asyncHandler(async (req, res, next) => {
     include: [
       { model: User, as: 'owner', attributes: ['id', 'name'] },
       { model: Team, attributes: ['id', 'name'] },
-      { model: User, as: 'members', attributes: ['id', 'name'] }
+      { model: User, as: 'members', attributes: ['id', 'name'] },
+      { model: Client, as: 'client', attributes: ['id', 'name', 'company', 'email', 'phone'] },
+      { model: Service, as: 'service', attributes: ['id', 'name', 'rate', 'rateType'] }
     ]
   });
 
@@ -244,7 +248,9 @@ exports.getProjectsByTeamMember = asyncHandler(async (req, res, next) => {
     include: [
       { model: User, as: 'owner', attributes: ['id', 'name'] },
       { model: Team, attributes: ['id', 'name'] },
-      { model: User, as: 'members', attributes: ['id', 'name'] }
+      { model: User, as: 'members', attributes: ['id', 'name'] },
+      { model: Client, as: 'client', attributes: ['id', 'name', 'company'] },
+      { model: Service, as: 'service', attributes: ['id', 'name'] }
     ],
     order: [['createdAt', 'DESC']]
   });

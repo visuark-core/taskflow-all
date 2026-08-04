@@ -13,7 +13,9 @@ import {
   Cpu,
   Megaphone,
   Building2,
-  Network
+  Network,
+  Handshake,
+  Receipt
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useSelector } from 'react-redux';
@@ -25,6 +27,8 @@ interface SidebarProps {
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Projects', href: '/projects', icon: Briefcase },
+  { name: 'Clients', href: '/clients', icon: Handshake },
+  { name: 'Billing', href: '/billing', icon: Receipt },
   { name: 'Tasks', href: '/tasks', icon: CheckSquare },
   { name: 'Kanban Board', href: '/kanban', icon: Trello },
   { name: 'Company Tree', href: '/company-tree', icon: Network },

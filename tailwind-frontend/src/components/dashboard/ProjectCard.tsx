@@ -3,12 +3,15 @@ import { Project } from '../../data/mockData';
 import { formatDate } from '../../lib/utils';
 import Badge from '../ui/Badge';
 import Avatar from '../ui/Avatar';
+import { Trash2, Handshake } from 'lucide-react';
 
 interface ProjectCardProps {
   project: Project;
+  onDelete?: (projectId: number | string) => void;
+  showDelete?: boolean;
 }
 
-export default function ProjectCard({ project }: ProjectCardProps) {
+export default function ProjectCard({ project, onDelete, showDelete }: ProjectCardProps) {
   // Fallbacks for backend data
   const tasksCount = project.tasksCount || { completed: 0, total: 0 };
   // Handle both flat member arrays and nested member.user structure
@@ -51,11 +54,32 @@ export default function ProjectCard({ project }: ProjectCardProps) {
             >
               {project.name}
             </Link>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+            {project.client && (
+              <div className="mt-0.5 flex items-center gap-1 text-xs font-semibold text-orange-650 dark:text-orange-400">
+                <Handshake size={13} className="shrink-0" />
+                <span>{project.client.name}</span>
+              </div>
+            )}
+            <p className="mt-1.5 text-sm text-gray-600 dark:text-gray-400">
               {project.description}
             </p>
           </div>
-          <div>{getStatusBadge(project.status)}</div>
+          <div className="flex flex-col items-end gap-2">
+            {getStatusBadge(project.status)}
+            {showDelete && onDelete && (
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onDelete(project._id || project.id);
+                }}
+                className="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-800 rounded transition-colors"
+                title="Delete Project"
+              >
+                <Trash2 size={15} />
+              </button>
+            )}
+          </div>
         </div>
         <div className="mt-4 flex items-center justify-between">
           <div className="flex items-center space-x-1">

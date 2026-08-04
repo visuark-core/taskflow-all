@@ -23,6 +23,9 @@ export default function NewProjectModal({ isOpen, onClose, onCreated }: NewProje
     color: '#3B82F6',
     teamId: '',
     managerId: '',
+    clientId: '',
+    serviceId: '',
+    budget: 0,
   });
   const [newTag, setNewTag] = useState('');
   const colorOptions = [
@@ -49,6 +52,8 @@ export default function NewProjectModal({ isOpen, onClose, onCreated }: NewProje
   const [error, setError] = useState<string | null>(null);
   const [teams, setTeams] = useState<any[]>([]);
   const [managers, setManagers] = useState<any[]>([]);
+  const [clients, setClients] = useState<any[]>([]);
+  const [services, setServices] = useState<any[]>([]);
 
   useEffect(() => {
     if (isOpen) {
@@ -69,6 +74,18 @@ export default function NewProjectModal({ isOpen, onClose, onCreated }: NewProje
         setManagers(managerUsers);
       })
       .catch(console.error);
+
+      axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/clients`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      .then(res => setClients(res.data.data || []))
+      .catch(console.error);
+
+      axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/services`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      .then(res => setServices(res.data.data || []))
+      .catch(console.error);
     }
   }, [isOpen, token]);
 
@@ -84,6 +101,9 @@ export default function NewProjectModal({ isOpen, onClose, onCreated }: NewProje
       color: '#3B82F6',
       teamId: '',
       managerId: '',
+      clientId: '',
+      serviceId: '',
+      budget: 0,
     });
   };
   const handleSubmit = async (e: React.FormEvent) => {
@@ -102,6 +122,9 @@ export default function NewProjectModal({ isOpen, onClose, onCreated }: NewProje
         color: formData.color,
         teamId: formData.teamId || undefined,
         managerId: formData.managerId || undefined,
+        clientId: formData.clientId || undefined,
+        serviceId: formData.serviceId || undefined,
+        budget: formData.budget || 0,
       };
       await axios.post('http://localhost:5000/api/projects', form, {
         headers: { Authorization: `Bearer ${token}` },
@@ -183,6 +206,35 @@ export default function NewProjectModal({ isOpen, onClose, onCreated }: NewProje
                       <option key={m.id || m._id} value={m.id || m._id}>{m.name}</option>
                     ))}
                   </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Assign to Client</label>
+                  <select value={formData.clientId} onChange={(e) => setFormData({ ...formData, clientId: e.target.value })} className="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+                    <option value="">No Client (Internal)</option>
+                    {clients.map(c => (
+                      <option key={c.id} value={c.id}>{c.name} {c.company ? `(${c.company})` : ''}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Service Type</label>
+                  <select value={formData.serviceId} onChange={(e) => setFormData({ ...formData, serviceId: e.target.value })} className="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+                    <option value="">Select Service Type</option>
+                    {services.map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Project Value ($ Service Price)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.budget || ''}
+                    onChange={(e) => setFormData({ ...formData, budget: parseFloat(e.target.value) || 0 })}
+                    placeholder="e.g. 1500"
+                    className="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Start Date *</label>

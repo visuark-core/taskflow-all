@@ -139,7 +139,7 @@ exports.deleteDepartment = asyncHandler(async (req, res, next) => {
   if (!department) return next(new ErrorResponse('Department not found', 404));
 
   if (department.Teams && department.Teams.length > 0) {
-    return next(new ErrorResponse('Cannot delete department with existing teams', 400));
+    await Team.update({ departmentId: null }, { where: { departmentId: department.id } });
   }
 
   if (department.managerId) {

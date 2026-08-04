@@ -110,6 +110,26 @@ export default function Projects() {
     return () => window.removeEventListener('taskCreated', handleTaskCreated);
   }, []);
 
+  const handleDeleteProject = async (projectId: string | number) => {
+    if (!window.confirm('Are you sure you want to delete this project? This will also delete all tasks associated with this project.')) {
+      return;
+    }
+    try {
+      const res = await fetch(`http://localhost:5000/api/projects/${projectId}`, {
+        method: 'DELETE',
+        headers: { Authorization: token ? `Bearer ${token}` : '' }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setRefreshCounter(c => c + 1);
+      } else {
+        alert(data.error || 'Failed to delete project');
+      }
+    } catch {
+      alert('Failed to delete project');
+    }
+  };
+
   return (
     <div className="animate-fade-in space-y-6">
       <div className="flex items-center justify-between">
@@ -218,7 +238,12 @@ export default function Projects() {
       ) : (
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filteredProjects.map(project => (
-            <ProjectCard key={project._id || project.id} project={project} />
+            <ProjectCard 
+              key={project._id || project.id} 
+              project={project} 
+              onDelete={handleDeleteProject}
+              showDelete={currentUser?.role === 'admin'}
+            />
           ))}
           {filteredProjects.length === 0 && (
             <div className="col-span-full py-12 text-center">

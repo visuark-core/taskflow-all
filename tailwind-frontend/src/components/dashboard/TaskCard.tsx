@@ -1,13 +1,15 @@
 import { Link } from 'react-router-dom';
 import { formatDate, getPriorityColor, getStatusColor } from '../../lib/utils';
 import Avatar from '../ui/Avatar';
-import { MessageSquare, Paperclip, Clock } from 'lucide-react';
+import { MessageSquare, Paperclip, Clock, Trash2 } from 'lucide-react';
 
 interface TaskCardProps {
   task: any; // using any because API returns tasks with _id and different shapes
+  onDelete?: (taskId: number | string) => void;
+  showDelete?: boolean;
 }
 
-export default function TaskCard({ task }: TaskCardProps) {
+export default function TaskCard({ task, onDelete, showDelete }: TaskCardProps) {
   return (
     <div className="card hover:shadow-md dark:hover:shadow-none transition-shadow">
       <div className="p-4">
@@ -19,10 +21,25 @@ export default function TaskCard({ task }: TaskCardProps) {
             {task.title}
           </Link>
           
-          <div className="flex items-center space-x-2">
-            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${getStatusColor(task.status)}`}>
-              {task.status}
-            </span>
+          <div className="flex flex-col items-end gap-2">
+            <div className="flex items-center space-x-2">
+              <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${getStatusColor(task.status)}`}>
+                {task.status}
+              </span>
+            </div>
+            {showDelete && onDelete && (
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onDelete(task._id || task.id);
+                }}
+                className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-800 rounded transition-colors"
+                title="Delete Task"
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
           </div>
         </div>
         

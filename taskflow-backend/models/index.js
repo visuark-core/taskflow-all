@@ -5,6 +5,10 @@ const User = require("./User");
 const Department = require("./Department");
 const Team = require("./Team");
 const Project = require("./Project");
+const Client = require("./Client");
+const Service = require("./Service");
+const Invoice = require("./Invoice");
+const InvoiceItem = require("./InvoiceItem");
 const Task = require("./Task");
 const Activity = require("./Activity");
 const Message = require("./Message");
@@ -94,6 +98,12 @@ User.hasMany(Project, { foreignKey: "ownerId" });
 Project.belongsTo(Team, { foreignKey: "teamId" });
 Team.hasMany(Project, { foreignKey: "teamId" });
 
+Project.belongsTo(Client, { as: "client", foreignKey: "clientId" });
+Client.hasMany(Project, { as: "projects", foreignKey: "clientId" });
+
+Project.belongsTo(Service, { as: "service", foreignKey: "serviceId" });
+Service.hasMany(Project, { as: "projects", foreignKey: "serviceId" });
+
 Project.belongsToMany(User, { as: "members", through: ProjectMember });
 User.belongsToMany(Project, { as: "projects", through: ProjectMember });
 
@@ -129,12 +139,26 @@ Notification.belongsTo(User, { as: "recipient", foreignKey: "recipientId" });
 Notification.belongsTo(Project, { as: "relatedProject", foreignKey: "relatedProjectId" });
 Notification.belongsTo(Task, { as: "relatedTask", foreignKey: "relatedTaskId" });
 
+// --- Billing/Invoice Associations ---
+Invoice.belongsTo(Project, { foreignKey: 'projectId', as: 'project' });
+Project.hasMany(Invoice, { foreignKey: 'projectId', as: 'invoices' });
+
+Invoice.belongsTo(Client, { foreignKey: 'clientId', as: 'client' });
+Client.hasMany(Invoice, { foreignKey: 'clientId', as: 'invoices' });
+
+InvoiceItem.belongsTo(Invoice, { foreignKey: 'invoiceId', as: 'invoice', onDelete: 'CASCADE' });
+Invoice.hasMany(InvoiceItem, { foreignKey: 'invoiceId', as: 'items', onDelete: 'CASCADE' });
+
 module.exports = {
   sequelize,
   User,
   Department,
   Team,
   Project,
+  Client,
+  Service,
+  Invoice,
+  InvoiceItem,
   Task,
   Activity,
   Message,

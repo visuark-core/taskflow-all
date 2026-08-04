@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Building2, Plus, Users, DollarSign, User as UserIcon, Pencil } from 'lucide-react';
+import { Building2, Plus, Users, IndianRupee, User as UserIcon, Pencil, Trash2 } from 'lucide-react';
 import axios from 'axios';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../app/store';
@@ -22,6 +22,7 @@ interface Department {
 
 export default function Departments() {
   const token = useSelector((state: RootState) => state.auth.token);
+  const currentUser = useSelector((state: RootState) => state.auth.user);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -150,6 +151,30 @@ export default function Departments() {
     }
   };
 
+  const handleDelete = async (deptId: number, deptName: string) => {
+    if (!window.confirm(`Are you sure you want to delete department "${deptName}"?`)) {
+      return;
+    }
+    try {
+      setError(null);
+      await axios.delete(`${API_URL}/api/departments/${deptId}`, {
+        headers: { Authorization: token ? `Bearer ${token}` : '' },
+      });
+      fetchDepartments(); // Refresh list
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.response?.data?.error || 'Failed to delete department');
+    }
+  };
+
+  if (!currentUser || currentUser.role !== 'admin') {
+    return (
+      <div className="py-12 text-center">
+        <h2 className="text-2xl font-bold text-red-600">Access Denied</h2>
+        <p className="mt-2 text-gray-600">Only admins can manage departments.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="animate-fade-in space-y-6 px-4 py-6">
       <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
@@ -181,13 +206,24 @@ export default function Departments() {
               <div className="p-6">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-xl font-bold text-gray-900 dark:text-white">{dept.name}</h3>
-                  <button
-                    onClick={() => handleOpenEditModal(dept)}
-                    className="p-1.5 text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-50 dark:hover:bg-gray-800 rounded transition-colors"
-                    title="Edit Department"
-                  >
-                    <Pencil size={16} />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => handleOpenEditModal(dept)}
+                      className="p-1.5 text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-50 dark:hover:bg-gray-800 rounded transition-colors"
+                      title="Edit Department"
+                    >
+                      <Pencil size={16} />
+                    </button>
+                    {currentUser?.role === 'admin' && (
+                      <button
+                        onClick={() => handleDelete(dept.id, dept.name)}
+                        className="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-800 rounded transition-colors"
+                        title="Delete Department"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-6 min-h-[40px]">
                   {dept.description || 'No description provided.'}
@@ -201,9 +237,9 @@ export default function Departments() {
                   </div>
                   
                   <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                    <DollarSign className="h-4 w-4 text-gray-400" />
+                    <IndianRupee className="h-4 w-4 text-gray-400" />
                     <span className="font-medium">Budget:</span>
-                    <span>${dept.budget?.toLocaleString() || '0'}</span>
+                    <span>₹{dept.budget?.toLocaleString() || '0'}</span>
                   </div>
                   
                   <div className="flex items-center justify-between pt-4 mt-2 border-t border-gray-100 dark:border-gray-800">
@@ -285,7 +321,7 @@ export default function Departments() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">Budget ($)</label>
+                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">Budget (₹)</label>
                 <input
                   type="number"
                   name="budget"
@@ -377,7 +413,7 @@ export default function Departments() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">Budget ($)</label>
+                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">Budget (₹)</label>
                 <input
                   type="number"
                   name="budget"

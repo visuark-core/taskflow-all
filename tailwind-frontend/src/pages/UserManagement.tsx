@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, User as UserIcon, AlertCircle, X, Shield, Briefcase, Mail, Eye, EyeOff, Pencil, CheckCircle } from 'lucide-react';
+import { Plus, User as UserIcon, AlertCircle, X, Shield, Briefcase, Mail, Eye, EyeOff, Pencil, CheckCircle, Trash2 } from 'lucide-react';
 import { useSelector } from 'react-redux';
 
 interface User {
@@ -175,6 +175,27 @@ export default function UserManagement() {
     }
   };
 
+  const handleDeleteUser = async (userId: string | number, userName: string) => {
+    if (!window.confirm(`Are you sure you want to delete user "${userName}"?`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`${base}/users/${userId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const result = await res.json();
+      if (result.success) {
+        showAlert('success', `User "${userName}" deleted successfully!`);
+        fetchUsers();
+      } else {
+        showAlert('error', result.error || 'Failed to delete user');
+      }
+    } catch {
+      showAlert('error', 'Failed to delete user');
+    }
+  };
+
   if (!currentUser || currentUser.role !== 'admin') {
     return (
       <div className="py-12 text-center">
@@ -292,13 +313,24 @@ export default function UserManagement() {
                     </td>
                     {/* Actions */}
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <button
-                        onClick={() => openEditModal(user)}
-                        className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50 transition-colors"
-                        title="Edit user"
-                      >
-                        <Pencil size={13} /> Edit
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => openEditModal(user)}
+                          className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50 transition-colors"
+                          title="Edit user"
+                        >
+                          <Pencil size={13} /> Edit
+                        </button>
+                        {String(currentUser?.id) !== String(user.id) && (
+                          <button
+                            onClick={() => handleDeleteUser(user.id, user.name)}
+                            className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50 transition-colors"
+                            title="Delete user"
+                          >
+                            <Trash2 size={13} /> Delete
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
