@@ -1103,8 +1103,8 @@ export default function Billing() {
 
       {/* --- Detailed Invoice View (Drawer / Printing layout) --- */}
       {isDetailOpen && detailedInvoice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-0 md:p-4 overflow-y-auto animate-fade-in print:bg-white print:p-0 print:static print:overflow-visible">
-          <div className="bg-white dark:bg-gray-900 md:rounded-xl shadow-2xl max-w-4xl w-full flex flex-col border border-gray-200 dark:border-gray-800 min-h-screen md:min-h-0 print:border-none print:shadow-none print:w-full print:bg-white print:text-black">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-2 md:p-6 overflow-y-auto animate-fade-in print:bg-white print:p-0 print:static print:overflow-visible">
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl max-w-4xl w-full flex flex-col border border-gray-200 dark:border-gray-800 max-h-[92vh] overflow-hidden print:border-none print:shadow-none print:w-full print:max-h-none print:h-auto print:overflow-visible print:bg-white print:text-black">
             
             {/* Top Toolbar (Hidden when printing) */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/40 print:hidden">
@@ -1169,7 +1169,7 @@ export default function Billing() {
               </div>
             </div>
                 {/* Printable Invoice Page */}
-            <div className="p-8 md:p-12 pb-24 space-y-8 flex-1 bg-white text-gray-850 dark:bg-gray-900 dark:text-gray-150 print:bg-white print:text-black print:pb-28 relative print:min-h-screen">
+            <div className="p-8 md:p-12 pb-24 space-y-8 flex-1 overflow-y-auto bg-white text-gray-850 dark:bg-gray-900 dark:text-gray-150 print:bg-white print:text-black print:pb-28 relative print:overflow-visible print:h-auto print:p-8">
               
               {/* Invoice Header */}
               <div className="flex justify-between items-center pb-6 border-b border-gray-100 dark:border-gray-800 print:border-gray-200">
