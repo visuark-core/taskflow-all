@@ -9,7 +9,7 @@ exports.getSalaryDetails = asyncHandler(async (req, res, next) => {
   // Fetch all users and include their salary structure and department
   const users = await User.findAll({
     where: { company: req.user.company },
-    attributes: ['id', 'name', 'email', 'role', 'status'],
+    attributes: ['id', 'name', 'email', 'role', 'isActive'],
     include: [
       { 
         model: SalaryDetail, 
@@ -25,10 +25,18 @@ exports.getSalaryDetails = asyncHandler(async (req, res, next) => {
     order: [['name', 'ASC']]
   });
 
+  const mappedUsers = users.map(u => {
+    const userJson = u.toJSON();
+    return {
+      ...userJson,
+      status: userJson.isActive ? 'active' : 'inactive'
+    };
+  });
+
   res.status(200).json({
     success: true,
-    count: users.length,
-    data: users
+    count: mappedUsers.length,
+    data: mappedUsers
   });
 });
 
