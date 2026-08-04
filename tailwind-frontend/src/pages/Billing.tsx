@@ -2,12 +2,33 @@ import React, { useEffect, useState } from 'react';
 import { 
   Receipt, Plus, Mail, Phone, Pencil, Trash2, X, Search, 
   Briefcase, Handshake, Calendar, IndianRupee, Eye, Printer, 
-  Settings, Check, Clock, AlertCircle, Sparkles
+  Settings, Check, Clock, AlertCircle, Sparkles, MapPin
 } from 'lucide-react';
 import axios from 'axios';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../app/store';
 import { formatDate } from '../lib/utils';
+
+const formatDateSlash = (dateStr: string) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day} / ${month} / ${year}`;
+};
+
+const formatDuration = (startStr?: string, endStr?: string) => {
+  if (!startStr) return '';
+  const s = new Date(startStr);
+  const e = endStr ? new Date(endStr) : null;
+  const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' };
+  const sFormatted = s.toLocaleDateString('en-US', options);
+  const eFormatted = e ? e.toLocaleDateString('en-US', options) : '';
+  return eFormatted ? `${sFormatted} - ${eFormatted}` : sFormatted;
+};
+
 
 interface Service {
   id: number;
@@ -1145,96 +1166,89 @@ export default function Billing() {
                   <X className="h-5 w-5" />
                 </button>
               </div>
-            </div>
-
-            {/* Printable Invoice Page */}
-            <div className="p-8 md:p-12 space-y-8 flex-1 bg-white text-gray-850 dark:bg-gray-900 dark:text-gray-150 print:bg-white print:text-black">
+                {/* Printable Invoice Page */}
+            <div className="p-8 md:p-12 pb-24 space-y-8 flex-1 bg-white text-gray-850 dark:bg-gray-900 dark:text-gray-150 print:bg-white print:text-black print:pb-28 relative print:min-h-screen">
               
               {/* Invoice Header */}
-              <div className="flex justify-between items-start pb-6 border-b border-gray-100 dark:border-gray-800 print:border-gray-200">
-                <div className="space-y-1">
-                  <h2 className="text-3xl font-extrabold text-primary-600 print:text-black">TaskFlow Inc.</h2>
-                  <p className="text-xs text-gray-500">123 Agency Plaza, Suite 400</p>
-                  <p className="text-xs text-gray-500">San Francisco, CA 94103</p>
-                  <p className="text-xs text-gray-500">billing@taskflow.com</p>
+              <div className="flex justify-between items-center pb-6 border-b border-gray-100 dark:border-gray-800 print:border-gray-200">
+                <div>
+                  <img 
+                    src="/logo.png" 
+                    alt="VISUARK Logo" 
+                    className="h-14 md:h-16 object-contain" 
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
                 </div>
 
-                <div className="text-right space-y-1">
-                  <h3 className="text-xl font-bold tracking-tight text-gray-900 dark:text-gray-100 uppercase">Invoice</h3>
-                  <p className="text-lg font-bold text-gray-655 dark:text-gray-400">#{detailedInvoice.invoiceNumber}</p>
-                  
-                  <div className="pt-2 text-xs text-gray-500 space-y-0.5">
-                    <div>Issued: <span className="font-semibold text-gray-800 dark:text-gray-200 print:text-black">{formatDate(new Date(detailedInvoice.issueDate))}</span></div>
-                    <div>Due: <span className="font-semibold text-red-655">{formatDate(new Date(detailedInvoice.dueDate))}</span></div>
-                  </div>
+                <div className="text-right">
+                  <h3 className="text-4xl font-light tracking-[0.15em] text-gray-900 dark:text-gray-100 uppercase font-sans print:text-black">Invoice</h3>
                 </div>
               </div>
 
-              {/* Client & Project Addresses */}
-              <div className="grid grid-cols-2 gap-8 text-xs">
+              {/* Client & Project Addresses and Metadata */}
+              <div className="grid grid-cols-2 gap-8 text-xs pt-4">
                 <div className="space-y-1">
-                  <span className="block text-[10px] font-bold text-gray-400 uppercase">Billed To</span>
-                  <div className="text-sm font-bold text-gray-900 dark:text-gray-100 print:text-black">
+                  <span className="block text-sm font-bold text-gray-950 dark:text-gray-100 print:text-black">Invoice to:</span>
+                  <div className="text-base font-bold text-gray-900 dark:text-gray-100 print:text-black">
                     {detailedInvoice.client?.name || 'N/A'}
                   </div>
-                  {detailedInvoice.client?.company && (
-                    <div className="font-medium text-gray-600 dark:text-gray-350 print:text-gray-650">
-                      {detailedInvoice.client.company}
-                    </div>
-                  )}
                   {detailedInvoice.client?.address && (
-                    <div className="text-gray-505 w-64 leading-relaxed whitespace-pre-line text-[11px] print:text-black">
+                    <div className="text-gray-500 w-64 leading-relaxed whitespace-pre-line text-xs print:text-black">
                       {detailedInvoice.client.address}
                     </div>
                   )}
-                  <div className="pt-1 text-gray-505 flex flex-col">
-                    {detailedInvoice.client?.email && <span>{detailedInvoice.client.email}</span>}
-                    {detailedInvoice.client?.phone && <span>{detailedInvoice.client.phone}</span>}
-                  </div>
                 </div>
 
-                <div className="space-y-1">
-                  <span className="block text-[10px] font-bold text-gray-400 uppercase">For Project</span>
-                  <div className="text-sm font-bold text-gray-900 dark:text-gray-100 print:text-black">
-                    {detailedInvoice.project?.name || 'N/A'}
+                <div className="text-right text-xs space-y-1 text-gray-700 dark:text-gray-300 print:text-black">
+                  <div>
+                    <span className="font-bold text-gray-900 dark:text-gray-100 print:text-black">Invoice : </span>
+                    {detailedInvoice.invoiceNumber.replace('INV-', '')}
                   </div>
-                  {detailedInvoice.project?.description && (
-                    <p className="text-gray-500 leading-relaxed max-w-sm line-clamp-3">
-                      {detailedInvoice.project.description}
-                    </p>
-                  )}
+                  <div>
+                    <span className="font-bold text-gray-900 dark:text-gray-100 print:text-black">Date : </span>
+                    {formatDateSlash(detailedInvoice.issueDate)}
+                  </div>
                 </div>
               </div>
 
+              {/* Duration line */}
+              {detailedInvoice.project?.startDate && (
+                <div className="text-right text-[11px] font-semibold text-gray-700 dark:text-gray-300 print:text-black">
+                  Duration- {formatDuration(detailedInvoice.project.startDate, detailedInvoice.project.endDate || detailedInvoice.project.dueDate)}
+                </div>
+              )}
+
               {/* Line Items Table */}
-              <div className="pt-4 overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
-                  <thead className="bg-gray-50 dark:bg-gray-800/30 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 print:bg-gray-100 print:text-black">
-                    <tr>
-                      <th className="px-4 py-3">Service Description</th>
-                      <th className="px-4 py-3 text-right">Billing Rate</th>
-                      <th className="px-4 py-3 text-center">Qty / Hours</th>
-                      <th className="px-4 py-3 text-right">Line Total</th>
+              <div className="pt-2 overflow-x-auto">
+                <table className="min-w-full text-xs text-left">
+                  <thead>
+                    <tr className="border-y-2 border-gray-900 dark:border-gray-700 text-gray-900 dark:text-gray-100 font-bold print:border-black print:text-black">
+                      <th className="px-2 py-3 font-bold text-gray-900 dark:text-gray-100 print:text-black">Item</th>
+                      <th className="px-2 py-3 text-center font-bold text-gray-900 dark:text-gray-100 print:text-black">Quantity</th>
+                      <th className="px-2 py-3 text-right font-bold text-gray-900 dark:text-gray-100 print:text-black">Unit Price</th>
+                      <th className="px-2 py-3 text-right font-bold text-gray-900 dark:text-gray-100 print:text-black">Total</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-150 dark:divide-gray-850 text-xs text-gray-700 dark:text-gray-300 print:divide-gray-200 print:text-black">
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-800 text-gray-700 dark:text-gray-300 print:divide-gray-300 print:text-black">
                     {detailedInvoice.items?.map((item) => (
-                      <tr key={item.id}>
-                        <td className="px-4 py-4 text-gray-900 dark:text-gray-150 print:text-black">
-                          <div className="font-semibold">{item.serviceName}</div>
+                      <tr key={item.id} className="border-b border-gray-150 dark:border-gray-800 print:border-gray-200">
+                        <td className="px-2 py-4 text-gray-900 dark:text-gray-150 print:text-black">
+                          <div className="font-bold text-xs">{item.serviceName}</div>
                           {item.description && (
                             <div className="text-[10px] font-normal text-gray-500 dark:text-gray-400 mt-0.5 whitespace-pre-line leading-relaxed">
                               {item.description}
                             </div>
                           )}
                         </td>
-                        <td className="px-4 py-4 text-right text-gray-505">
-                          ₹{item.rate.toFixed(2)}
-                        </td>
-                        <td className="px-4 py-4 text-center text-gray-555">
+                        <td className="px-2 py-4 text-center">
                           {item.quantity}
                         </td>
-                        <td className="px-4 py-4 text-right font-bold text-gray-900 dark:text-gray-100 print:text-black">
+                        <td className="px-2 py-4 text-right">
+                          ₹{item.rate.toFixed(2)}
+                        </td>
+                        <td className="px-2 py-4 text-right font-bold text-gray-950 dark:text-gray-100 print:text-black">
                           ₹{item.amount.toFixed(2)}
                         </td>
                       </tr>
@@ -1244,50 +1258,127 @@ export default function Billing() {
               </div>
 
               {/* Summary Totals Calculation */}
-              <div className="flex flex-col md:flex-row gap-6 justify-between items-start pt-6 border-t border-gray-100 dark:border-gray-800 print:border-gray-200">
-                <div className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed md:max-w-md">
-                  {detailedInvoice.notes ? (
-                    <div className="space-y-1">
-                      <span className="block text-[10px] font-bold text-gray-400 uppercase">Notes & Terms</span>
-                      <p className="whitespace-pre-line">{detailedInvoice.notes}</p>
-                    </div>
-                  ) : (
-                    <p>Thank you for your business. Payment is requested within 15 days of invoice issue date via bank wire transfer details specified in contract terms.</p>
-                  )}
+              <div className="flex flex-col items-end pt-4 space-y-2 border-t-2 border-gray-900 dark:border-gray-800 print:border-black">
+                <div className="flex justify-between w-64 text-xs font-semibold text-gray-800 dark:text-gray-200 print:text-black">
+                  <span>Subtotal</span>
+                  <span>₹{(detailedInvoice.items?.reduce((acc, curr) => acc + curr.amount, 0) || 0).toFixed(2)}</span>
                 </div>
 
-                <div className="w-full md:w-64 space-y-2.5 text-xs text-gray-505 dark:text-gray-400 print:text-black">
-                  <div className="flex justify-between">
-                    <span>Subtotal</span>
-                    <span className="font-semibold text-gray-800 dark:text-gray-200 print:text-black">
-                      ₹{(detailedInvoice.items?.reduce((acc, curr) => acc + curr.amount, 0) || 0).toFixed(2)}
-                    </span>
+                {detailedInvoice.taxRate > 0 && (
+                  <div className="flex justify-between w-64 text-xs font-semibold text-gray-800 dark:text-gray-200 print:text-black">
+                    <span>Tax ({detailedInvoice.taxRate}%)</span>
+                    <span>₹{((detailedInvoice.items?.reduce((acc, curr) => acc + curr.amount, 0) || 0) * (detailedInvoice.taxRate / 100)).toFixed(2)}</span>
+                  </div>
+                )}
+
+                {detailedInvoice.discount > 0 && (
+                  <div className="flex justify-between w-64 text-xs font-semibold text-red-655">
+                    <span>Discount</span>
+                    <span>-₹{detailedInvoice.discount.toFixed(2)}</span>
+                  </div>
+                )}
+
+                <div className="border-t border-gray-900 dark:border-gray-800 w-64 my-1 print:border-black"></div>
+
+                <div className="flex justify-between w-64 items-baseline">
+                  <span className="text-lg font-bold text-gray-950 dark:text-gray-100 print:text-black">Total</span>
+                  <span className="text-2xl font-black text-gray-950 dark:text-gray-100 print:text-black">
+                    ₹{detailedInvoice.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+
+              {/* Payment Details, Greeting, Seal & Signature Section */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-gray-100 dark:border-gray-800 items-end relative print:border-gray-200">
+                
+                {/* Left Side: Payment Method & Greeting */}
+                <div className="space-y-6">
+                  <div>
+                    <span className="block text-xs font-bold text-gray-900 dark:text-gray-100 print:text-black uppercase tracking-wider">Payment Method</span>
+                    <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 print:text-black mt-1">
+                      UPI ID: mastersunil@yesg
+                    </div>
+                  </div>
+                  
+                  <div className="text-lg font-bold text-gray-900 dark:text-gray-100 print:text-black font-sans leading-snug">
+                    Thank you for be a part of VISUARK!
+                  </div>
+                </div>
+
+                {/* Right Side: Signature Line & Stamp Seal */}
+                <div className="flex flex-col items-center justify-end relative select-none md:ml-auto w-48">
+                  {/* Stamp Seal overlaid */}
+                  <div className="absolute -top-12 left-4 opacity-75 rotate-[15deg] pointer-events-none z-10 print:opacity-90">
+                    {detailedInvoice.status === 'paid' ? (
+                      <svg viewBox="0 0 100 100" className="w-24 h-24 text-green-600 print:text-green-700">
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="3 2" />
+                        <circle cx="50" cy="50" r="41" fill="none" stroke="currentColor" strokeWidth="1" />
+                        <circle cx="50" cy="50" r="32" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                        <text x="50" y="24" textAnchor="middle" fontSize="5" fontWeight="bold" fill="currentColor" letterSpacing="0.3">VISUARK DIGITAL</text>
+                        <text x="50" y="81" textAnchor="middle" fontSize="5" fontWeight="bold" fill="currentColor" letterSpacing="0.3">AGENCY * JODHPUR</text>
+                        <rect x="20" y="38" width="60" height="24" rx="2" fill="white" fillOpacity="0.9" stroke="currentColor" strokeWidth="1.5" />
+                        <text x="50" y="55" textAnchor="middle" fontSize="13" fontWeight="900" fill="currentColor" letterSpacing="1">PAID</text>
+                      </svg>
+                    ) : detailedInvoice.status === 'overdue' ? (
+                      <svg viewBox="0 0 100 100" className="w-24 h-24 text-red-655 print:text-red-750">
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="3 2" />
+                        <circle cx="50" cy="50" r="41" fill="none" stroke="currentColor" strokeWidth="1" />
+                        <circle cx="50" cy="50" r="32" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                        <text x="50" y="24" textAnchor="middle" fontSize="5" fontWeight="bold" fill="currentColor" letterSpacing="0.3">VISUARK DIGITAL</text>
+                        <text x="50" y="81" textAnchor="middle" fontSize="5" fontWeight="bold" fill="currentColor" letterSpacing="0.3">AGENCY * JODHPUR</text>
+                        <rect x="15" y="38" width="70" height="24" rx="2" fill="white" fillOpacity="0.9" stroke="currentColor" strokeWidth="1.5" />
+                        <text x="50" y="55" textAnchor="middle" fontSize="10" fontWeight="900" fill="currentColor" letterSpacing="0.5">OVERDUE</text>
+                      </svg>
+                    ) : (
+                      <svg viewBox="0 0 100 100" className="w-24 h-24 text-amber-600 print:text-amber-705">
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="3 2" />
+                        <circle cx="50" cy="50" r="41" fill="none" stroke="currentColor" strokeWidth="1" />
+                        <circle cx="50" cy="50" r="32" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                        <text x="50" y="24" textAnchor="middle" fontSize="5" fontWeight="bold" fill="currentColor" letterSpacing="0.3">VISUARK DIGITAL</text>
+                        <text x="50" y="81" textAnchor="middle" fontSize="5" fontWeight="bold" fill="currentColor" letterSpacing="0.3">AGENCY * JODHPUR</text>
+                        <rect x="20" y="38" width="60" height="24" rx="2" fill="white" fillOpacity="0.9" stroke="currentColor" strokeWidth="1.5" />
+                        <text x="50" y="55" textAnchor="middle" fontSize="13" fontWeight="900" fill="currentColor" letterSpacing="1">DUE</text>
+                      </svg>
+                    )}
                   </div>
 
-                  {detailedInvoice.taxRate > 0 && (
-                    <div className="flex justify-between">
-                      <span>Tax ({detailedInvoice.taxRate}%)</span>
-                      <span className="font-semibold text-gray-800 dark:text-gray-200 print:text-black">
-                        ₹{((detailedInvoice.items?.reduce((acc, curr) => acc + curr.amount, 0) || 0) * (detailedInvoice.taxRate / 100)).toFixed(2)}
-                      </span>
-                    </div>
-                  )}
-
-                  {detailedInvoice.discount > 0 && (
-                    <div className="flex justify-between text-red-655 font-medium">
-                      <span>Discount</span>
-                      <span>-₹{detailedInvoice.discount.toFixed(2)}</span>
-                    </div>
-                  )}
-
-                  <div className="border-t border-gray-200 dark:border-gray-800 my-1"></div>
-
-                  <div className="flex justify-between text-sm font-bold text-gray-900 dark:text-gray-100 print:text-black">
-                    <span>Total Due</span>
-                    <span className="text-primary-655 print:text-black">
-                      ₹{detailedInvoice.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    </span>
+                  {/* Cursive SVG Signature */}
+                  <div className="mb-1">
+                    <svg viewBox="0 0 200 60" className="h-14 w-44 text-gray-800 dark:text-gray-200 print:text-black">
+                      <path 
+                        d="M 25 38 C 30 12, 38 10, 45 32 C 48 42, 45 48, 52 38 C 60 28, 62 18, 65 35 C 68 45, 75 32, 80 25 C 88 18, 92 38, 98 42 C 105 45, 110 32, 115 28 C 120 22, 125 35, 128 42 C 132 46, 138 32, 142 28 C 148 22, 155 35, 160 40" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        strokeWidth="2.5" 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                      />
+                      <path 
+                        d="M 20 48 L 175 48" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        strokeWidth="2" 
+                        strokeLinecap="round" 
+                      />
+                    </svg>
                   </div>
+                  
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1 text-center">
+                    Authorized Signed
+                  </span>
+                </div>
+
+              </div>
+
+              {/* Bottom blue gradient footer banner */}
+              <div className="mt-8 bg-gradient-to-r from-blue-950 to-sky-500 text-white py-3 px-6 rounded-lg flex flex-col sm:flex-row justify-between items-center gap-2 text-xs font-semibold tracking-wide print:rounded-none print:absolute print:bottom-0 print:left-0 print:right-0 print:w-full print:px-8">
+                <div className="flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-sky-200" />
+                  <span>+91 8619949455</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-sky-200" />
+                  <span>I Start Incubation Center, Jodhpur</span>
                 </div>
               </div>
 
