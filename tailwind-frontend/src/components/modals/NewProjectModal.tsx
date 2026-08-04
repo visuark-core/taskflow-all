@@ -226,7 +226,7 @@ export default function NewProjectModal({ isOpen, onClose, onCreated }: NewProje
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Project Value ($ Service Price)</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Project Value (₹ Service Price)</label>
                   <input
                     type="number"
                     min="0"

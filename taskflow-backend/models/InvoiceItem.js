@@ -32,6 +32,9 @@ const InvoiceItem = sequelize.define("InvoiceItem", {
     type: DataTypes.FLOAT,
     allowNull: false,
   },
+  description: {
+    type: DataTypes.TEXT,
+  },
 });
 
 module.exports = InvoiceItem;

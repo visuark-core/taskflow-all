@@ -99,7 +99,8 @@ exports.createInvoice = asyncHandler(async (req, res, next) => {
       serviceName: item.serviceName,
       rate,
       quantity,
-      amount
+      amount,
+      description: item.description
     };
   });
 
@@ -197,7 +198,8 @@ exports.updateInvoice = asyncHandler(async (req, res, next) => {
         rate,
         quantity,
         amount,
-        invoiceId: invoice.id
+        invoiceId: invoice.id,
+        description: item.description
       };
     });
 

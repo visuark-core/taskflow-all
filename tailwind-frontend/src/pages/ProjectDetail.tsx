@@ -221,7 +221,7 @@ export default function ProjectDetail() {
             )}
             {project.service && (
               <span className="flex items-center gap-1 text-sm text-gray-500">
-                <Receipt className="h-4 w-4 text-teal-500" /> Service: <span className="font-semibold text-gray-700 dark:text-gray-250">{project.service.name}</span> (${project.budget || 0})
+                <Receipt className="h-4 w-4 text-teal-500" /> Service: <span className="font-semibold text-gray-700 dark:text-gray-250">{project.service.name}</span> (₹{project.budget || 0})
               </span>
             )}
             {canEdit && (
@@ -455,7 +455,7 @@ export default function ProjectDetail() {
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
-                    Project Value ($ Service Price)
+                    Project Value (₹ Service Price)
                   </label>
                   <input
                     type="number"

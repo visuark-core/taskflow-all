@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { 
   Receipt, Plus, Mail, Phone, Pencil, Trash2, X, Search, 
-  Briefcase, Handshake, Calendar, DollarSign, Eye, Printer, 
+  Briefcase, Handshake, Calendar, IndianRupee, Eye, Printer, 
   Settings, Check, Clock, AlertCircle, Sparkles
 } from 'lucide-react';
 import axios from 'axios';
@@ -23,6 +23,7 @@ interface InvoiceItem {
   rate: number;
   quantity: number;
   amount: number;
+  description?: string;
 }
 
 interface Project {
@@ -167,7 +168,7 @@ export default function Billing() {
       taxRate: 0,
       discount: 0,
       notes: '',
-      items: [{ serviceName: '', rate: 0, quantity: 1, amount: 0 }]
+      items: [{ serviceName: '', rate: 0, quantity: 1, amount: 0, description: '' }]
     });
     setInvoiceSubmitError(null);
     setIsInvoiceModalOpen(true);
@@ -186,8 +187,8 @@ export default function Billing() {
       discount: inv.discount,
       notes: inv.notes || '',
       items: inv.items && inv.items.length > 0 
-        ? inv.items.map(item => ({ ...item }))
-        : [{ serviceName: '', rate: 0, quantity: 1, amount: 0 }]
+        ? inv.items.map(item => ({ ...item, description: item.description || '' }))
+        : [{ serviceName: '', rate: 0, quantity: 1, amount: 0, description: '' }]
     });
     setInvoiceSubmitError(null);
     setIsInvoiceModalOpen(true);
@@ -197,7 +198,7 @@ export default function Billing() {
   const handleProjectSelect = (projIdStr: string) => {
     const selectedProj = projects.find(p => String(p.id) === projIdStr);
     let resolvedClientId = '';
-    let defaultItems: InvoiceItem[] = [{ serviceName: '', rate: 0, quantity: 1, amount: 0 }];
+    let defaultItems: InvoiceItem[] = [{ serviceName: '', rate: 0, quantity: 1, amount: 0, description: '' }];
     
     if (selectedProj) {
       if (selectedProj.client) {
@@ -213,7 +214,8 @@ export default function Billing() {
           serviceName: proj.service.name,
           rate: rate,
           quantity: 1,
-          amount: rate
+          amount: rate,
+          description: `Service performed for project: ${proj.name}`
         }];
       }
     }
@@ -241,6 +243,8 @@ export default function Billing() {
       item.rate = parseFloat(value) || 0;
     } else if (field === 'quantity') {
       item.quantity = parseFloat(value) || 0;
+    } else if (field === 'description') {
+      item.description = value;
     }
 
     item.amount = item.rate * item.quantity;
@@ -252,7 +256,7 @@ export default function Billing() {
   const addInvoiceItemRow = () => {
     setInvoiceForm({
       ...invoiceForm,
-      items: [...invoiceForm.items, { serviceName: '', rate: 0, quantity: 1, amount: 0 }]
+      items: [...invoiceForm.items, { serviceName: '', rate: 0, quantity: 1, amount: 0, description: '' }]
     });
   };
 
@@ -272,8 +276,8 @@ export default function Billing() {
       setInvoiceSubmitError('Client is required');
       return;
     }
-    if (invoiceForm.items.some(item => !item.serviceName.trim() || item.rate <= 0 || item.quantity <= 0)) {
-      setInvoiceSubmitError('All line items must have a service name, rate, and quantity greater than 0');
+    if (invoiceForm.items.some(item => !item.serviceName.trim() || item.rate < 0 || item.quantity <= 0)) {
+      setInvoiceSubmitError('All line items must have a service name, positive rate, and quantity greater than 0');
       return;
     }
 
@@ -438,7 +442,7 @@ export default function Billing() {
             Billing & Invoicing
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Bill your clients based on project milestones and standard services performed.
+            Bill your clients in Indian Rupees (₹) based on project milestones and standard services performed.
           </p>
         </div>
 
@@ -503,7 +507,7 @@ export default function Billing() {
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="rounded-lg border border-gray-250 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs text-gray-700 dark:text-gray-300 px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  className="rounded-lg border border-gray-255 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs text-gray-700 dark:text-gray-300 px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-500"
                 >
                   <option value="all">All Invoices</option>
                   <option value="draft">Draft</option>
@@ -575,7 +579,7 @@ export default function Billing() {
                             {formatDate(new Date(inv.dueDate))}
                           </td>
                           <td className="px-6 py-4 text-right font-bold text-gray-900 dark:text-gray-100">
-                            ${inv.totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            ₹{inv.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                           </td>
                           <td className="px-6 py-4 text-center">
                             <div className="flex items-center justify-center gap-2">
@@ -598,7 +602,7 @@ export default function Billing() {
                               {isAdminOrManager && (
                                 <button
                                   onClick={() => handleDeleteInvoice(inv)}
-                                  className="p-1 text-gray-500 hover:text-red-650 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                                  className="p-1 text-gray-500 hover:text-red-655 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
                                   title="Delete"
                                 >
                                   <Trash2 className="h-4 w-4" />
@@ -631,7 +635,7 @@ export default function Billing() {
                       {service.name}
                     </h3>
                     <span className="inline-flex items-center rounded-full bg-teal-50 text-teal-800 dark:bg-teal-900/20 dark:text-teal-400 px-2.5 py-0.5 text-[10px] font-semibold uppercase">
-                      {service.rateType === 'hourly' ? 'Hourly Rate' : 'Fixed Rate'}
+                      {service.rateType === 'hourly' ? 'Hourly' : 'Fixed'}
                     </span>
                   </div>
                   {service.description && (
@@ -643,7 +647,7 @@ export default function Billing() {
 
                 <div className="flex items-center justify-between border-t border-gray-100 dark:border-gray-700/50 pt-4 mt-6">
                   <div className="flex items-baseline text-gray-900 dark:text-gray-100">
-                    <DollarSign className="h-5 w-5 shrink-0 text-gray-400" />
+                    <IndianRupee className="h-5 w-5 shrink-0 text-gray-400" />
                     <span className="text-xl font-bold">{service.rate}</span>
                     <span className="text-xs text-gray-500 ml-1">
                       {service.rateType === 'hourly' ? '/hr' : 'flat'}
@@ -661,7 +665,7 @@ export default function Billing() {
                       </button>
                       <button
                         onClick={() => handleDeleteService(service)}
-                        className="p-1.5 text-gray-500 hover:text-red-650 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded transition-colors"
+                        className="p-1.5 text-gray-500 hover:text-red-655 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded transition-colors"
                         title="Delete Service"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -685,7 +689,7 @@ export default function Billing() {
 
       {/* --- Invoices Create/Edit Modal --- */}
       {isInvoiceModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in print:hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-fade-in print:hidden">
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl max-w-3xl w-full overflow-hidden flex flex-col border border-gray-200 dark:border-gray-800 animate-scale-up max-h-[90vh]">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/40">
               <div className="flex items-center gap-2">
@@ -722,7 +726,7 @@ export default function Billing() {
                       required
                       value={invoiceForm.invoiceNumber}
                       onChange={(e) => setInvoiceForm({ ...invoiceForm, invoiceNumber: e.target.value })}
-                      className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-850 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
+                      className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-855 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
                     />
                   </div>
 
@@ -770,7 +774,7 @@ export default function Billing() {
                       type="date"
                       value={invoiceForm.issueDate}
                       onChange={(e) => setInvoiceForm({ ...invoiceForm, issueDate: e.target.value })}
-                      className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-850 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
+                      className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-855 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
                     />
                   </div>
 
@@ -783,7 +787,7 @@ export default function Billing() {
                       required
                       value={invoiceForm.dueDate}
                       onChange={(e) => setInvoiceForm({ ...invoiceForm, dueDate: e.target.value })}
-                      className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-850 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
+                      className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-855 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
                     />
                   </div>
                 </div>
@@ -804,71 +808,89 @@ export default function Billing() {
                     </button>
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {invoiceForm.items.map((item, idx) => (
-                      <div key={idx} className="flex flex-col md:flex-row gap-3 items-end bg-gray-50 dark:bg-gray-800/40 p-3 rounded-lg border border-gray-100 dark:border-gray-800">
-                        <div className="flex-1 w-full">
+                      <div key={idx} className="flex flex-col gap-3 bg-gray-50 dark:bg-gray-800/40 p-4 rounded-lg border border-gray-150 dark:border-gray-800 relative">
+                        
+                        <div className="flex flex-col md:flex-row gap-3 items-end">
+                          <div className="flex-1 w-full">
+                            <label className="block text-[10px] font-semibold text-gray-400 uppercase mb-1">
+                              Service Name *
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              list="services-list"
+                              value={item.serviceName}
+                              onChange={(e) => handleInvoiceItemChange(idx, 'serviceName', e.target.value)}
+                              placeholder="Type service name..."
+                              className="block w-full rounded-md border border-gray-250 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-850 dark:text-gray-100 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary-500"
+                            />
+                            <datalist id="services-list">
+                              {services.map(s => <option key={s.id} value={s.name} />)}
+                            </datalist>
+                          </div>
+
+                          <div className="w-full md:w-32">
+                            <label className="block text-[10px] font-semibold text-gray-400 uppercase mb-1">
+                              Rate (₹) *
+                            </label>
+                            <input
+                              type="number"
+                              required
+                              min="0"
+                              step="0.01"
+                              value={item.rate || ''}
+                              onChange={(e) => handleInvoiceItemChange(idx, 'rate', e.target.value)}
+                              className="block w-full rounded-md border border-gray-250 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-850 dark:text-gray-100 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary-500"
+                            />
+                          </div>
+
+                          <div className="w-full md:w-24">
+                            <label className="block text-[10px] font-semibold text-gray-400 uppercase mb-1">
+                              Qty (Hours/Flat) *
+                            </label>
+                            <input
+                              type="number"
+                              required
+                              min="0.01"
+                              step="0.01"
+                              value={item.quantity || ''}
+                              onChange={(e) => handleInvoiceItemChange(idx, 'quantity', e.target.value)}
+                              className="block w-full rounded-md border border-gray-250 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-855 dark:text-gray-100 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary-500"
+                            />
+                          </div>
+
+                          <div className="w-full md:w-28 text-right pr-2 pb-2 font-bold text-gray-900 dark:text-gray-205">
+                            <span className="block text-[10px] text-gray-400 text-left mb-1 font-semibold uppercase">Total</span>
+                            ₹{(item.rate * item.quantity).toFixed(2)}
+                          </div>
+
+                          {invoiceForm.items.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeInvoiceItemRow(idx)}
+                              className="p-1.5 text-gray-400 hover:text-red-655 hover:bg-gray-105 dark:hover:bg-gray-700 rounded transition-colors mb-0.5"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Description field */}
+                        <div className="w-full">
                           <label className="block text-[10px] font-semibold text-gray-400 uppercase mb-1">
-                            Service Name *
+                            Line details / Notes (Things mentioned on it)
                           </label>
                           <input
                             type="text"
-                            required
-                            list="services-list"
-                            value={item.serviceName}
-                            onChange={(e) => handleInvoiceItemChange(idx, 'serviceName', e.target.value)}
-                            placeholder="Type service name..."
-                            className="block w-full rounded-md border border-gray-250 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-850 dark:text-gray-100 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary-500"
-                          />
-                          <datalist id="services-list">
-                            {services.map(s => <option key={s.id} value={s.name} />)}
-                          </datalist>
-                        </div>
-
-                        <div className="w-full md:w-32">
-                          <label className="block text-[10px] font-semibold text-gray-400 uppercase mb-1">
-                            Rate ($) *
-                          </label>
-                          <input
-                            type="number"
-                            required
-                            min="0"
-                            step="0.01"
-                            value={item.rate || ''}
-                            onChange={(e) => handleInvoiceItemChange(idx, 'rate', e.target.value)}
+                            value={item.description || ''}
+                            onChange={(e) => handleInvoiceItemChange(idx, 'description', e.target.value)}
+                            placeholder="Describe what services are included in this item (e.g. details, notes)..."
                             className="block w-full rounded-md border border-gray-250 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-850 dark:text-gray-100 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary-500"
                           />
                         </div>
 
-                        <div className="w-full md:w-24">
-                          <label className="block text-[10px] font-semibold text-gray-400 uppercase mb-1">
-                            Qty (Hours/Flat) *
-                          </label>
-                          <input
-                            type="number"
-                            required
-                            min="0.01"
-                            step="0.01"
-                            value={item.quantity || ''}
-                            onChange={(e) => handleInvoiceItemChange(idx, 'quantity', e.target.value)}
-                            className="block w-full rounded-md border border-gray-250 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-850 dark:text-gray-100 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary-500"
-                          />
-                        </div>
-
-                        <div className="w-full md:w-28 text-right pr-2 pb-2 font-bold text-gray-900 dark:text-gray-200">
-                          <span className="block text-[10px] text-gray-400 text-left mb-1 font-semibold uppercase">Total</span>
-                          ${(item.rate * item.quantity).toFixed(2)}
-                        </div>
-
-                        {invoiceForm.items.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeInvoiceItemRow(idx)}
-                            className="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors mb-0.5"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        )}
                       </div>
                     ))}
                   </div>
@@ -885,14 +907,14 @@ export default function Billing() {
                       value={invoiceForm.notes}
                       onChange={(e) => setInvoiceForm({ ...invoiceForm, notes: e.target.value })}
                       placeholder="Specify terms, bank transfer details, or project milestones..."
-                      className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-850 dark:text-gray-100 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary-500"
+                      className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-855 dark:text-gray-100 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary-500"
                     />
                   </div>
 
                   <div className="w-full md:w-80 bg-gray-50 dark:bg-gray-800/20 p-4 rounded-xl border border-gray-100 dark:border-gray-800 space-y-3">
                     <div className="flex justify-between text-xs text-gray-500">
                       <span>Subtotal</span>
-                      <span className="font-semibold text-gray-900 dark:text-gray-250">${formTotals.subtotal.toFixed(2)}</span>
+                      <span className="font-semibold text-gray-900 dark:text-gray-250">₹{formTotals.subtotal.toFixed(2)}</span>
                     </div>
 
                     <div className="flex items-center justify-between text-xs text-gray-500">
@@ -908,7 +930,7 @@ export default function Billing() {
                     </div>
 
                     <div className="flex items-center justify-between text-xs text-gray-500">
-                      <span>Discount ($)</span>
+                      <span>Discount (₹)</span>
                       <input 
                         type="number"
                         min="0"
@@ -922,7 +944,7 @@ export default function Billing() {
 
                     <div className="flex justify-between text-sm font-bold">
                       <span className="text-gray-900 dark:text-gray-100">Total Amount</span>
-                      <span className="text-primary-600 dark:text-primary-400">${formTotals.total.toFixed(2)}</span>
+                      <span className="text-primary-600 dark:text-primary-400">₹{formTotals.total.toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
@@ -978,7 +1000,7 @@ export default function Billing() {
                 )}
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">
+                  <label className="block text-xs font-semibold text-gray-555 uppercase mb-1">
                     Service Name *
                   </label>
                   <input 
@@ -987,14 +1009,14 @@ export default function Billing() {
                     value={serviceForm.name}
                     onChange={(e) => setServiceForm({ ...serviceForm, name: e.target.value })}
                     placeholder="e.g. Frontend Development"
-                    className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-850 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-855 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">
-                      Billing Rate ($) *
+                    <label className="block text-xs font-semibold text-gray-555 uppercase mb-1">
+                      Billing Rate (₹) *
                     </label>
                     <input 
                       type="number"
@@ -1003,13 +1025,13 @@ export default function Billing() {
                       step="0.01"
                       value={serviceForm.rate || ''}
                       onChange={(e) => setServiceForm({ ...serviceForm, rate: parseFloat(e.target.value) || 0 })}
-                      placeholder="e.g. 75"
-                      className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-850 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
+                      placeholder="e.g. 1500"
+                      className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-855 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">
+                    <label className="block text-xs font-semibold text-gray-555 uppercase mb-1">
                       Billing Type
                     </label>
                     <select
@@ -1024,7 +1046,7 @@ export default function Billing() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">
+                  <label className="block text-xs font-semibold text-gray-555 uppercase mb-1">
                     Service Description
                   </label>
                   <textarea 
@@ -1032,7 +1054,7 @@ export default function Billing() {
                     value={serviceForm.description}
                     onChange={(e) => setServiceForm({ ...serviceForm, description: e.target.value })}
                     placeholder="Describe what services are included in this item..."
-                    className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-850 dark:text-gray-100 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-855 dark:text-gray-100 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary-500"
                   />
                 </div>
               </div>
@@ -1100,7 +1122,7 @@ export default function Billing() {
                     {detailedInvoice.status !== 'cancelled' && detailedInvoice.status !== 'paid' && (
                       <button
                         onClick={() => handleUpdateInvoiceStatus(detailedInvoice.id, 'cancelled')}
-                        className="px-2.5 py-1 text-[10px] font-bold text-red-650 hover:bg-red-50 dark:hover:bg-red-950/20 rounded"
+                        className="px-2.5 py-1 text-[10px] font-bold text-red-655 hover:bg-red-50 dark:hover:bg-red-950/20 rounded"
                       >
                         Cancel Invoice
                       </button>
@@ -1139,11 +1161,11 @@ export default function Billing() {
 
                 <div className="text-right space-y-1">
                   <h3 className="text-xl font-bold tracking-tight text-gray-900 dark:text-gray-100 uppercase">Invoice</h3>
-                  <p className="text-lg font-bold text-gray-600 dark:text-gray-400">#{detailedInvoice.invoiceNumber}</p>
+                  <p className="text-lg font-bold text-gray-655 dark:text-gray-400">#{detailedInvoice.invoiceNumber}</p>
                   
                   <div className="pt-2 text-xs text-gray-500 space-y-0.5">
                     <div>Issued: <span className="font-semibold text-gray-800 dark:text-gray-200 print:text-black">{formatDate(new Date(detailedInvoice.issueDate))}</span></div>
-                    <div>Due: <span className="font-semibold text-red-600">{formatDate(new Date(detailedInvoice.dueDate))}</span></div>
+                    <div>Due: <span className="font-semibold text-red-655">{formatDate(new Date(detailedInvoice.dueDate))}</span></div>
                   </div>
                 </div>
               </div>
@@ -1156,16 +1178,16 @@ export default function Billing() {
                     {detailedInvoice.client?.name || 'N/A'}
                   </div>
                   {detailedInvoice.client?.company && (
-                    <div className="font-medium text-gray-600 dark:text-gray-300 print:text-gray-650">
+                    <div className="font-medium text-gray-600 dark:text-gray-350 print:text-gray-650">
                       {detailedInvoice.client.company}
                     </div>
                   )}
                   {detailedInvoice.client?.address && (
-                    <div className="text-gray-500 w-64 leading-relaxed whitespace-pre-line">
+                    <div className="text-gray-505 w-64 leading-relaxed whitespace-pre-line text-[11px] print:text-black">
                       {detailedInvoice.client.address}
                     </div>
                   )}
-                  <div className="pt-1 text-gray-500 flex flex-col">
+                  <div className="pt-1 text-gray-505 flex flex-col">
                     {detailedInvoice.client?.email && <span>{detailedInvoice.client.email}</span>}
                     {detailedInvoice.client?.phone && <span>{detailedInvoice.client.phone}</span>}
                   </div>
@@ -1198,17 +1220,22 @@ export default function Billing() {
                   <tbody className="divide-y divide-gray-150 dark:divide-gray-850 text-xs text-gray-700 dark:text-gray-300 print:divide-gray-200 print:text-black">
                     {detailedInvoice.items?.map((item) => (
                       <tr key={item.id}>
-                        <td className="px-4 py-4 font-semibold text-gray-900 dark:text-gray-150 print:text-black">
-                          {item.serviceName}
+                        <td className="px-4 py-4 text-gray-900 dark:text-gray-150 print:text-black">
+                          <div className="font-semibold">{item.serviceName}</div>
+                          {item.description && (
+                            <div className="text-[10px] font-normal text-gray-500 dark:text-gray-400 mt-0.5 whitespace-pre-line leading-relaxed">
+                              {item.description}
+                            </div>
+                          )}
                         </td>
-                        <td className="px-4 py-4 text-right text-gray-500">
-                          ${item.rate.toFixed(2)}
+                        <td className="px-4 py-4 text-right text-gray-505">
+                          ₹{item.rate.toFixed(2)}
                         </td>
-                        <td className="px-4 py-4 text-center text-gray-500">
+                        <td className="px-4 py-4 text-center text-gray-555">
                           {item.quantity}
                         </td>
                         <td className="px-4 py-4 text-right font-bold text-gray-900 dark:text-gray-100 print:text-black">
-                          ${item.amount.toFixed(2)}
+                          ₹{item.amount.toFixed(2)}
                         </td>
                       </tr>
                     ))}
@@ -1229,11 +1256,11 @@ export default function Billing() {
                   )}
                 </div>
 
-                <div className="w-full md:w-64 space-y-2.5 text-xs text-gray-500 dark:text-gray-400 print:text-black">
+                <div className="w-full md:w-64 space-y-2.5 text-xs text-gray-505 dark:text-gray-400 print:text-black">
                   <div className="flex justify-between">
                     <span>Subtotal</span>
                     <span className="font-semibold text-gray-800 dark:text-gray-200 print:text-black">
-                      ${(detailedInvoice.items?.reduce((acc, curr) => acc + curr.amount, 0) || 0).toFixed(2)}
+                      ₹{(detailedInvoice.items?.reduce((acc, curr) => acc + curr.amount, 0) || 0).toFixed(2)}
                     </span>
                   </div>
 
@@ -1241,7 +1268,7 @@ export default function Billing() {
                     <div className="flex justify-between">
                       <span>Tax ({detailedInvoice.taxRate}%)</span>
                       <span className="font-semibold text-gray-800 dark:text-gray-200 print:text-black">
-                        ${((detailedInvoice.items?.reduce((acc, curr) => acc + curr.amount, 0) || 0) * (detailedInvoice.taxRate / 100)).toFixed(2)}
+                        ₹{((detailedInvoice.items?.reduce((acc, curr) => acc + curr.amount, 0) || 0) * (detailedInvoice.taxRate / 100)).toFixed(2)}
                       </span>
                     </div>
                   )}
@@ -1249,7 +1276,7 @@ export default function Billing() {
                   {detailedInvoice.discount > 0 && (
                     <div className="flex justify-between text-red-655 font-medium">
                       <span>Discount</span>
-                      <span>-${detailedInvoice.discount.toFixed(2)}</span>
+                      <span>-₹{detailedInvoice.discount.toFixed(2)}</span>
                     </div>
                   )}
 
@@ -1257,8 +1284,8 @@ export default function Billing() {
 
                   <div className="flex justify-between text-sm font-bold text-gray-900 dark:text-gray-100 print:text-black">
                     <span>Total Due</span>
-                    <span className="text-primary-600 print:text-black">
-                      ${detailedInvoice.totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    <span className="text-primary-655 print:text-black">
+                      ₹{detailedInvoice.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                 </div>
