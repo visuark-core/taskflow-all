@@ -663,7 +663,7 @@ export default function Billing() {
                               >
                                 <Eye className="h-4 w-4" />
                               </button>
-                              {isAdminOrManager && inv.status === 'draft' && (
+                              {isAdminOrManager && inv.status !== 'paid' && inv.status !== 'cancelled' && (
                                 <button
                                   onClick={() => handleOpenEditInvoiceModal(inv)}
                                   className="p-1 text-gray-500 hover:text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
@@ -1315,7 +1315,7 @@ export default function Billing() {
                   </div>
                 )}
                 
-                {isAdminOrManager && detailedInvoice.status === 'draft' && (
+                {isAdminOrManager && detailedInvoice.status !== 'paid' && detailedInvoice.status !== 'cancelled' && (
                   <button
                     onClick={() => {
                       setIsDetailOpen(false);
