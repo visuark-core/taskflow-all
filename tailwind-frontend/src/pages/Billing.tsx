@@ -1194,11 +1194,11 @@ export default function Billing() {
                   <div className="text-base font-bold text-gray-900 dark:text-gray-100 print:text-black">
                     {detailedInvoice.client?.name || 'N/A'}
                   </div>
-                  {detailedInvoice.client?.address && (
+                  {detailedInvoice.client?.address &&
                     <div className="text-gray-500 w-64 leading-relaxed whitespace-pre-line text-xs print:text-black">
                       {detailedInvoice.client.address}
                     </div>
-                  )}
+                  }
                 </div>
 
                 <div className="text-right text-xs space-y-1 text-gray-700 dark:text-gray-300 print:text-black">
@@ -1214,11 +1214,11 @@ export default function Billing() {
               </div>
 
               {/* Duration line */}
-              {detailedInvoice.project?.startDate && (
+              {detailedInvoice.project?.startDate &&
                 <div className="text-right text-[11px] font-semibold text-gray-700 dark:text-gray-300 print:text-black">
                   Duration- {formatDuration(detailedInvoice.project.startDate, detailedInvoice.project.endDate || detailedInvoice.project.dueDate)}
                 </div>
-              )}
+              }
 
               {/* Line Items Table */}
               <div className="pt-2 overflow-x-auto">
@@ -1264,19 +1264,19 @@ export default function Billing() {
                   <span>₹{(detailedInvoice.items?.reduce((acc, curr) => acc + curr.amount, 0) || 0).toFixed(2)}</span>
                 </div>
 
-                {detailedInvoice.taxRate > 0 && (
+                {detailedInvoice.taxRate > 0 &&
                   <div className="flex justify-between w-64 text-xs font-semibold text-gray-800 dark:text-gray-200 print:text-black">
                     <span>Tax ({detailedInvoice.taxRate}%)</span>
                     <span>₹{((detailedInvoice.items?.reduce((acc, curr) => acc + curr.amount, 0) || 0) * (detailedInvoice.taxRate / 100)).toFixed(2)}</span>
                   </div>
-                )}
+                }
 
-                {detailedInvoice.discount > 0 && (
+                {detailedInvoice.discount > 0 &&
                   <div className="flex justify-between w-64 text-xs font-semibold text-red-655">
                     <span>Discount</span>
                     <span>-₹{detailedInvoice.discount.toFixed(2)}</span>
                   </div>
-                )}
+                }
 
                 <div className="border-t border-gray-900 dark:border-gray-800 w-64 my-1 print:border-black"></div>
 
