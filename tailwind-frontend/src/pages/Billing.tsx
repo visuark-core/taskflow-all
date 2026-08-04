@@ -122,6 +122,7 @@ export default function Billing() {
     taxRate: 0,
     discount: 0,
     notes: '',
+    status: 'draft',
     items: [] as InvoiceItem[]
   });
 
@@ -231,6 +232,7 @@ export default function Billing() {
       taxRate: 0,
       discount: 0,
       notes: '',
+      status: 'draft',
       items: [{ serviceName: '', rate: 0, quantity: 1, amount: 0, description: '' }]
     });
     setInvoiceSubmitError(null);
@@ -249,6 +251,7 @@ export default function Billing() {
       taxRate: inv.taxRate,
       discount: inv.discount,
       notes: inv.notes || '',
+      status: inv.status,
       items: inv.items && inv.items.length > 0 
         ? inv.items.map(item => ({ ...item, description: item.description || '' }))
         : [{ serviceName: '', rate: 0, quantity: 1, amount: 0, description: '' }]
@@ -838,7 +841,7 @@ export default function Billing() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">
                       Issue Date
@@ -852,7 +855,7 @@ export default function Billing() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">
+                    <label className="block text-xs font-semibold text-gray-555 uppercase mb-1">
                       Due Date *
                     </label>
                     <input 
@@ -862,6 +865,24 @@ export default function Billing() {
                       onChange={(e) => setInvoiceForm({ ...invoiceForm, dueDate: e.target.value })}
                       className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-855 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">
+                      Invoice Status *
+                    </label>
+                    <select
+                      required
+                      value={invoiceForm.status}
+                      onChange={(e) => setInvoiceForm({ ...invoiceForm, status: e.target.value })}
+                      className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    >
+                      <option value="draft">Draft</option>
+                      <option value="sent">Sent (Due)</option>
+                      <option value="paid">Paid</option>
+                      <option value="overdue">Overdue</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
                   </div>
                 </div>
 
