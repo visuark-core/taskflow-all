@@ -8,6 +8,7 @@ const ErrorResponse = require('../utils/errorResponse');
 exports.getSalaryDetails = asyncHandler(async (req, res, next) => {
   // Fetch all users and include their salary structure and department
   const users = await User.findAll({
+    where: { company: req.user.company },
     attributes: ['id', 'name', 'email', 'role', 'status'],
     include: [
       { 
@@ -105,6 +106,8 @@ exports.getPayouts = asyncHandler(async (req, res, next) => {
       {
         model: User,
         as: 'user',
+        where: { company: req.user.company },
+        required: true,
         attributes: ['id', 'name', 'email', 'role']
       }
     ],

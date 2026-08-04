@@ -267,7 +267,8 @@ exports.getTeamMembers = asyncHandler(async (req, res, next) => {
   const users = await User.findAll({
     attributes: ['id', 'name', 'email', 'avatar'],
     where: {
-      id: { [Op.ne]: req.user.id }
+      id: { [Op.ne]: req.user.id },
+      company: req.user.company
     }
   });
 

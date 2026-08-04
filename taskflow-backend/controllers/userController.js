@@ -6,7 +6,10 @@ const { Op } = require('sequelize');
 // Get all users
 exports.getUsers = asyncHandler(async (req, res, next) => {
   const users = await User.findAll({
-    where: { isActive: true },
+    where: { 
+      isActive: true,
+      company: req.user.company
+    },
     attributes: ['id', 'name', 'email', 'avatar', 'role', 'department'],
     include: [{ model: Team, attributes: ['id', 'name'] }],
     order: [['name', 'ASC']]
