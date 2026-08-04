@@ -12,7 +12,7 @@ export default function Layout() {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-900">
+    <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-900 print:block print:h-auto print:overflow-visible print:bg-white">
       {/* Mobile sidebar */}
       <div
         className={`fixed inset-0 z-40 bg-gray-900/50 dark:bg-gray-900/80 ${
@@ -23,7 +23,7 @@ export default function Layout() {
 
       {/* Sidebar */}
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-64 transform overflow-y-auto bg-white p-4 shadow-lg transition-transform duration-200 ease-in-out dark:bg-gray-800 lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 transform overflow-y-auto bg-white p-4 shadow-lg transition-transform duration-200 ease-in-out dark:bg-gray-800 lg:static lg:translate-x-0 print:hidden ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -31,17 +31,19 @@ export default function Layout() {
       </div>
 
       {/* Content area */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Navbar>
-          <button
-            className="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 lg:hidden"
-            onClick={toggleSidebar}
-          >
-            <Menu className="h-6 w-6" />
-          </button>
-        </Navbar>
+      <div className="flex flex-1 flex-col overflow-hidden print:block print:h-auto print:overflow-visible">
+        <div className="print:hidden">
+          <Navbar>
+            <button
+              className="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 lg:hidden"
+              onClick={toggleSidebar}
+            >
+              <Menu className="h-6 w-6" />
+            </button>
+          </Navbar>
+        </div>
         
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 print:block print:p-0 print:overflow-visible">
           <div className="mx-auto max-w-7xl">
             <Outlet />
           </div>
