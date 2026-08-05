@@ -64,6 +64,16 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/salaries', salaryRoutes);
 
+// Temporary endpoint to trigger db sync on Vercel
+app.get('/api/db-sync', async (req, res) => {
+  try {
+    const { sequelize } = require('./models');
+    await sequelize.sync({ alter: true });
+    res.send("Database synchronized successfully!");
+  } catch (err) {
+    res.status(500).send("Sync failed: " + err.message);
+  }
+});
 
 // Handle 404s
 app.use((req, res, next) => {
