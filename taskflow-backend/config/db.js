@@ -3,15 +3,30 @@ const pg = require('pg'); // Force Vercel to bundle pg dialect
 const dotenv = require("dotenv");
 dotenv.config();
 
-console.log("Database Config:");
-console.log("DB_HOST:", process.env.DB_HOST);
-console.log("DB_PORT:", process.env.DB_PORT);
+let connectionUri = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+let host = process.env.DB_HOST;
+let port = process.env.DB_PORT || "5432";
+
+// Automatically map IPv6 direct connection to the IPv4 pooler for this Supabase project
+if (connectionUri && connectionUri.includes("db.fxyjskvayzytamfqstgn.supabase.co")) {
+  console.log("Rewriting connection URL to use Supabase IPv4 Pooler");
+  connectionUri = connectionUri.replace("db.fxyjskvayzytamfqstgn.supabase.co", "aws-0-ap-south-1.pooler.supabase.com");
+  // Change port 5432 to 6543 if present
+  connectionUri = connectionUri.replace(":5432", ":6543");
+}
+
+if (host === "db.fxyjskvayzytamfqstgn.supabase.co") {
+  console.log("Rewriting DB_HOST and DB_PORT to use Supabase IPv4 Pooler");
+  host = "aws-0-ap-south-1.pooler.supabase.com";
+  port = "6543";
+}
+
+console.log("Database Config (Actual):");
+console.log("DB_HOST:", host);
+console.log("DB_PORT:", port);
 console.log("DB_NAME:", process.env.DB_NAME);
 console.log("DB_USER:", process.env.DB_USER);
-console.log("Has DATABASE_URL:", !!process.env.DATABASE_URL);
-console.log("Has POSTGRES_URL:", !!process.env.POSTGRES_URL);
-
-const connectionUri = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+console.log("Has connectionUri:", !!connectionUri);
 
 const dialectOptions = {};
 let useSsl = false;
@@ -20,7 +35,7 @@ if (connectionUri) {
   if (!connectionUri.includes("localhost") && !connectionUri.includes("127.0.0.1")) {
     useSsl = true;
   }
-} else if (process.env.DB_HOST && process.env.DB_HOST !== "localhost" && process.env.DB_HOST !== "127.0.0.1") {
+} else if (host && host !== "localhost" && host !== "127.0.0.1") {
   useSsl = true;
 }
 
@@ -43,8 +58,8 @@ const sequelize = connectionUri
       process.env.DB_USER,
       process.env.DB_PASSWORD,
       {
-        host: process.env.DB_HOST,
-        port: process.env.DB_PORT,
+        host: host,
+        port: port,
         dialect: "postgres",
         dialectModule: pg,
         dialectOptions,
