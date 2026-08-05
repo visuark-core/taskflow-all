@@ -224,18 +224,39 @@ exports.reorderTasks = asyncHandler(async (req, res, next) => {
 });
 
 exports.addAttachment = asyncHandler(async (req, res, next) => {
+  const cloudinary = require('../config/cloudinary');
+  const fs = require('fs');
+
   if (!req.file) {
     return next(new ErrorResponse('Please upload a file', 400));
   }
 
   const task = await Task.findByPk(req.params.id);
-  if (!task) return next(new ErrorResponse('Task not found', 404));
+  if (!task) {
+    if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    return next(new ErrorResponse('Task not found', 404));
+  }
 
-  const attachment = await TaskAttachment.create({
-    filename: req.file.originalname,
-    url: `/uploads/${req.file.filename}`,
-    taskId: task.id
-  });
+  try {
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: 'taskflow/attachments',
+      resource_type: 'auto',
+    });
 
-  res.status(201).json({ success: true, data: attachment });
+    const attachment = await TaskAttachment.create({
+      filename: req.file.originalname,
+      url: result.secure_url,
+      taskId: task.id
+    });
+
+    // Clean up local temp file
+    if (fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+
+    res.status(201).json({ success: true, data: attachment });
+  } catch (uploadErr) {
+    if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    return next(new ErrorResponse('Cloudinary upload failed: ' + uploadErr.message, 500));
+  }
 });

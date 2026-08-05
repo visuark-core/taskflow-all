@@ -30,19 +30,38 @@ exports.getTeamMembers = asyncHandler(async (req, res, next) => {
 
 // Upload Avatar
 exports.uploadAvatar = asyncHandler(async (req, res, next) => {
+  const cloudinary = require('../config/cloudinary');
+  const fs = require('fs');
+
   if (!req.file) {
     return res.status(400).json({ success: false, error: 'Please upload a file' });
   }
 
   const user = await User.findByPk(req.user.id);
   if (!user) {
+    if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
     return res.status(404).json({ success: false, error: 'User not found' });
   }
 
-  user.avatar = `/uploads/${req.file.filename}`;
-  await user.save();
+  try {
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: 'taskflow/avatars',
+      transformation: [{ width: 150, height: 150, crop: 'thumb', gravity: 'face' }]
+    });
 
-  res.status(200).json({ success: true, user });
+    user.avatar = result.secure_url;
+    await user.save();
+
+    // Clean up local temp file
+    if (fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+
+    res.status(200).json({ success: true, user });
+  } catch (uploadErr) {
+    if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    return res.status(500).json({ success: false, error: 'Cloudinary upload failed: ' + uploadErr.message });
+  }
 });
 
 // Create user (admin)

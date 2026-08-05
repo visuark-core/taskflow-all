@@ -1,5 +1,12 @@
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import axios from "axios";
+import { supabase } from "../../lib/supabase";
+
+const getBaseApiUrl = () => {
+  const url = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  return url.endsWith('/api') ? url : `${url}/api`;
+};
+
 
 /** User interface */
 interface User {
@@ -103,13 +110,34 @@ export const registerUser = createAsyncThunk<
   { rejectValue: string }
 >("auth/registerUser", async (body, { rejectWithValue }) => {
   try {
+    // 1. Attempt to sign up with Supabase first
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: body.email,
+      password: body.password,
+    });
+
+    if (authError) {
+      console.warn("Supabase signup failed or bypassed:", authError.message);
+    }
+
+    // 2. Call local backend to register/save profile
     const res = await axios.post<RegisterResponse>(
-      "http://localhost:5000/api/auth/register",
+      `${getBaseApiUrl()}/auth/register`,
       body,
       {
         headers: { "Content-Type": "application/json" },
       }
     );
+
+    // If Supabase was successful, use Supabase JWT token
+    if (!authError && authData.session?.access_token) {
+      return {
+        user: normalizeUser(res.data.user),
+        token: authData.session.access_token,
+      };
+    }
+
+    // Fallback to local token
     return {
       ...res.data,
       user: normalizeUser(res.data.user),
@@ -131,16 +159,46 @@ export const loginUser = createAsyncThunk<
   { rejectValue: string }
 >("auth/loginUser", async (credentials, { rejectWithValue }) => {
   try {
-    const res = await axios.post<LoginResponse>(
-      "http://localhost:5000/api/auth/login",
-      credentials,
+    // 1. Attempt to authenticate with Supabase first
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email: credentials.email,
+      password: credentials.password,
+    });
+
+    if (authError) {
+      // Fallback to local database authentication
+      console.warn("Supabase auth failed, falling back to local auth:", authError.message);
+      const res = await axios.post<LoginResponse>(
+        `${getBaseApiUrl()}/auth/login`,
+        credentials,
+        {
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+      return {
+        ...res.data,
+        user: normalizeUser(res.data.user),
+      };
+    }
+
+    // 2. Fetch the corresponding user profile from local backend using Supabase JWT
+    const token = authData.session?.access_token;
+    if (!token) {
+      return rejectWithValue("Failed to retrieve session token from Supabase.");
+    }
+
+    const res = await axios.get<{ success: boolean; data: any }>(
+      `${getBaseApiUrl()}/auth/me`,
       {
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       }
     );
+
     return {
-      ...res.data,
-      user: normalizeUser(res.data.user),
+      user: normalizeUser(res.data.data),
+      token,
     };
   } catch (error: unknown) {
     if (axios.isAxiosError(error)) {
@@ -165,7 +223,7 @@ export const updateUserProfile = createAsyncThunk<
     const state = getState() as { auth: AuthState };
     const token = state.auth.token;
     const res = await axios.put<{ success: boolean; user: any }>(
-      "http://localhost:5000/api/users/me",
+      `${getBaseApiUrl()}/users/me`,
       profileData,
       {
         headers: {
@@ -201,7 +259,7 @@ export const uploadUserAvatar = createAsyncThunk<
     formData.append("avatar", file);
 
     const res = await axios.post<{ success: boolean; user: any }>(
-      "http://localhost:5000/api/users/avatar",
+      `${getBaseApiUrl()}/users/avatar`,
       formData,
       {
         headers: {
