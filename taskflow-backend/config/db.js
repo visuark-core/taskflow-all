@@ -16,7 +16,7 @@ if (connectionUri) {
     console.log(`Rewriting connection URL to use Supabase IPv4 Pooler for tenant: ${projectRef}`);
     
     // 1. Replace the host
-    connectionUri = connectionUri.replace(`db.${projectRef}.supabase.co`, "aws-0-ap-south-1.pooler.supabase.com");
+    connectionUri = connectionUri.replace(`db.${projectRef}.supabase.co`, "aws-0-ap-northeast-1.pooler.supabase.com");
     
     // 2. Change port 5432 to 6543 if present
     connectionUri = connectionUri.replace(":5432", ":6543");
@@ -38,7 +38,7 @@ if (host) {
   if (supabaseMatch) {
     const projectRef = supabaseMatch[1];
     console.log(`Rewriting DB_HOST, DB_PORT and DB_USER to use Supabase IPv4 Pooler for tenant: ${projectRef}`);
-    host = "aws-0-ap-south-1.pooler.supabase.com";
+    host = "aws-0-ap-northeast-1.pooler.supabase.com";
     port = "6543";
     
     if (dbUser && !dbUser.endsWith(`.${projectRef}`)) {
