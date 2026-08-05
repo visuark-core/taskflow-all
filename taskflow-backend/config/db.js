@@ -11,6 +11,7 @@ const sequelize = new Sequelize(
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
     dialect: "mysql",
+    dialectModule: mysql2, // Pass the dialect module explicitly for serverless environments
     logging: false,
   }
 );
