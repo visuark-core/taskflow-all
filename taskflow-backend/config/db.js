@@ -1,5 +1,5 @@
 const { Sequelize } = require("sequelize");
-const mysql2 = require('mysql2'); // Force Vercel to bundle mysql2 dialect
+const pg = require('pg'); // Force Vercel to bundle pg dialect
 const dotenv = require("dotenv");
 dotenv.config();
 
@@ -9,6 +9,15 @@ console.log("DB_PORT:", process.env.DB_PORT);
 console.log("DB_NAME:", process.env.DB_NAME);
 console.log("DB_USER:", process.env.DB_USER);
 
+const dialectOptions = {};
+// Enable SSL for cloud hosting (e.g. Supabase) but keep it disabled for localhost development
+if (process.env.DB_HOST && process.env.DB_HOST !== "localhost" && process.env.DB_HOST !== "127.0.0.1") {
+  dialectOptions.ssl = {
+    require: true,
+    rejectUnauthorized: false,
+  };
+}
+
 const sequelize = new Sequelize(
   process.env.DB_NAME,
   process.env.DB_USER,
@@ -16,8 +25,9 @@ const sequelize = new Sequelize(
   {
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
-    dialect: "mysql",
-    dialectModule: mysql2, // Pass the dialect module explicitly for serverless environments
+    dialect: "postgres",
+    dialectModule: pg, // Pass the dialect module explicitly for serverless environments
+    dialectOptions,
     logging: false,
   }
 );

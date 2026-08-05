@@ -22,6 +22,8 @@
     "mysql2": "^3.22.3",
     "node-cron": "^3.0.2",
     "nodemailer": "^6.9.7",
+    "pg": "^8.22.0",
+    "pg-hstore": "^2.3.4",
     "sequelize": "^6.37.8",
     "serverless-http": "^3.0.0",
     "socket.io": "^4.6.2"
