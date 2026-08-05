@@ -1,4 +1,5 @@
 const { Sequelize } = require("sequelize");
+const mysql2 = require('mysql2'); // Force Vercel to bundle mysql2 dialect
 const dotenv = require("dotenv");
 dotenv.config();
 
