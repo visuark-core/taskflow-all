@@ -6,26 +6,52 @@ dotenv.config();
 let connectionUri = process.env.DATABASE_URL || process.env.POSTGRES_URL;
 let host = process.env.DB_HOST;
 let port = process.env.DB_PORT || "5432";
+let dbUser = process.env.DB_USER;
 
 // Automatically map IPv6 direct connection to the IPv4 pooler for this Supabase project
-if (connectionUri && connectionUri.includes("db.fxyjskvayzytamfqstgn.supabase.co")) {
-  console.log("Rewriting connection URL to use Supabase IPv4 Pooler");
-  connectionUri = connectionUri.replace("db.fxyjskvayzytamfqstgn.supabase.co", "aws-0-ap-south-1.pooler.supabase.com");
-  // Change port 5432 to 6543 if present
-  connectionUri = connectionUri.replace(":5432", ":6543");
+if (connectionUri) {
+  const supabaseUriMatch = connectionUri.match(/@db\.([a-z0-9]+)\.supabase\.co/i);
+  if (supabaseUriMatch) {
+    const projectRef = supabaseUriMatch[1];
+    console.log(`Rewriting connection URL to use Supabase IPv4 Pooler for tenant: ${projectRef}`);
+    
+    // 1. Replace the host
+    connectionUri = connectionUri.replace(`db.${projectRef}.supabase.co`, "aws-0-ap-south-1.pooler.supabase.com");
+    
+    // 2. Change port 5432 to 6543 if present
+    connectionUri = connectionUri.replace(":5432", ":6543");
+    
+    // 3. Append the project reference suffix to the username in the connection URI
+    const urlMatch = connectionUri.match(/postgresql:\/\/([^:@]+)(:[^@]+)?@/);
+    if (urlMatch) {
+      const originalUser = urlMatch[1];
+      if (!originalUser.endsWith(`.${projectRef}`)) {
+        const replacementUser = `${originalUser}.${projectRef}`;
+        connectionUri = connectionUri.replace(`postgresql://${originalUser}`, `postgresql://${replacementUser}`);
+      }
+    }
+  }
 }
 
-if (host === "db.fxyjskvayzytamfqstgn.supabase.co") {
-  console.log("Rewriting DB_HOST and DB_PORT to use Supabase IPv4 Pooler");
-  host = "aws-0-ap-south-1.pooler.supabase.com";
-  port = "6543";
+if (host) {
+  const supabaseMatch = host.match(/^db\.([a-z0-9]+)\.supabase\.co$/i);
+  if (supabaseMatch) {
+    const projectRef = supabaseMatch[1];
+    console.log(`Rewriting DB_HOST, DB_PORT and DB_USER to use Supabase IPv4 Pooler for tenant: ${projectRef}`);
+    host = "aws-0-ap-south-1.pooler.supabase.com";
+    port = "6543";
+    
+    if (dbUser && !dbUser.endsWith(`.${projectRef}`)) {
+      dbUser = `${dbUser}.${projectRef}`;
+    }
+  }
 }
 
 console.log("Database Config (Actual):");
 console.log("DB_HOST:", host);
 console.log("DB_PORT:", port);
 console.log("DB_NAME:", process.env.DB_NAME);
-console.log("DB_USER:", process.env.DB_USER);
+console.log("DB_USER:", dbUser);
 console.log("Has connectionUri:", !!connectionUri);
 
 const dialectOptions = {};
@@ -55,7 +81,7 @@ const sequelize = connectionUri
     })
   : new Sequelize(
       process.env.DB_NAME,
-      process.env.DB_USER,
+      dbUser,
       process.env.DB_PASSWORD,
       {
         host: host,
