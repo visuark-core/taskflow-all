@@ -10,8 +10,6 @@ import {
   XAxis, 
   YAxis, 
   CartesianGrid, 
-  Area, 
-  AreaChart, 
   Legend 
 } from 'recharts';
 import { 
@@ -30,8 +28,7 @@ import {
   ArrowRight,
   TrendingDown,
   Layers,
-  Award,
-  BookOpen
+  Award
 } from 'lucide-react';
 import StatsCard from '../components/dashboard/StatsCard';
 import ProjectCard from '../components/dashboard/ProjectCard';
@@ -168,6 +165,27 @@ export default function Dashboard() {
     }
   }, [token, base, refreshCounter, currentUser]);
 
+  // Robust formatting helpers to avoid runtime crashes
+  const formatTime = (dateStr: any) => {
+    if (!dateStr) return '';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return '';
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+      return '';
+    }
+  };
+
+  const formatCurrency = (val: any) => {
+    if (val === undefined || val === null || isNaN(Number(val))) return '₹0';
+    try {
+      return `₹${Number(val).toLocaleString()}`;
+    } catch (e) {
+      return '₹0';
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-[70vh] items-center justify-center">
@@ -278,7 +296,6 @@ export default function Dashboard() {
   // FOUNDER / ADMIN COMMAND CENTER DASHBOARD
   // ============================================
   
-  // Custom Pie Chart Colors
   const CHART_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
   const getDepartmentBudgetData = () => {
@@ -308,6 +325,11 @@ export default function Dashboard() {
       { name: 'Done', value: ctoData.taskStatus.done || 0 }
     ];
   };
+
+  const totalAllocation = cfoData?.financials?.totalAllocation || 0;
+  const totalBudget = cfoData?.financials?.totalBudget || 1;
+  const budgetProgress = totalBudget > 0 ? Math.min((totalAllocation / totalBudget) * 100, 100) : 0;
+  const budgetRatioString = totalBudget > 0 ? ((totalAllocation / totalBudget) * 100).toFixed(0) : '0';
 
   return (
     <div className="space-y-8 animate-fade-in pb-12">
@@ -516,7 +538,7 @@ export default function Dashboard() {
                               {' '}{activity.description || activity.action}
                             </p>
                             <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">
-                              {new Date(activity.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              {formatTime(activity.createdAt)}
                             </span>
                           </div>
                         </div>
@@ -537,13 +559,13 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
             <StatsCard
               title="Company Total Budget"
-              value={`₹${(cfoData?.financials?.totalBudget || 0).toLocaleString()}`}
+              value={formatCurrency(cfoData?.financials?.totalBudget)}
               icon={Wallet}
               iconColor="bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
             />
             <StatsCard
               title="Project Allocated Budget"
-              value={`₹${(cfoData?.financials?.totalAllocation || 0).toLocaleString()}`}
+              value={formatCurrency(cfoData?.financials?.totalAllocation)}
               icon={DollarSign}
               iconColor="bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400"
             />
@@ -562,7 +584,7 @@ export default function Dashboard() {
                       ? 'text-red-600 dark:text-red-400' 
                       : 'text-emerald-600 dark:text-emerald-400'
                   )}>
-                    ₹{(cfoData?.financials?.remainingBudget || 0).toLocaleString()}
+                    {formatCurrency(cfoData?.financials?.remainingBudget)}
                   </h3>
                   <div className="mt-2 flex items-center text-xs text-gray-400">
                     {cfoData?.financials?.remainingBudget >= 0 ? (
@@ -592,19 +614,17 @@ export default function Dashboard() {
           <div className="card p-6 bg-white dark:bg-gray-900 border border-gray-150 dark:border-gray-800 space-y-3">
             <div className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-300">
               <span>Overall Budget Allocated to Active Projects</span>
-              <span>
-                {((cfoData?.financials?.totalAllocation / (cfoData?.financials?.totalBudget || 1)) * 100).toFixed(0)}%
-              </span>
+              <span>{budgetRatioString}%</span>
             </div>
             <div className="w-full bg-gray-100 dark:bg-gray-800 h-4 rounded-full overflow-hidden">
               <div 
                 className={cn(
                   'h-full rounded-full bg-gradient-to-r',
-                  (cfoData?.financials?.totalAllocation / (cfoData?.financials?.totalBudget || 1)) > 1
+                  (totalAllocation / totalBudget) > 1
                     ? 'from-red-500 to-rose-600'
                     : 'from-emerald-500 to-indigo-500'
                 )}
-                style={{ width: `${Math.min((cfoData?.financials?.totalAllocation / (cfoData?.financials?.totalBudget || 1)) * 100, 100)}%` }}
+                style={{ width: `${budgetProgress}%` }}
               ></div>
             </div>
           </div>
@@ -627,7 +647,7 @@ export default function Dashboard() {
                     {cfoData?.topProjects?.map((proj: any) => (
                       <tr key={proj.id}>
                         <td className="py-3.5 font-bold text-gray-800 dark:text-gray-200">{proj.name}</td>
-                        <td className="py-3.5 font-semibold text-gray-700 dark:text-gray-300">₹{proj.budget?.toLocaleString()}</td>
+                        <td className="py-3.5 font-semibold text-gray-700 dark:text-gray-300">{formatCurrency(proj.budget)}</td>
                         <td className="py-3.5 max-w-[120px]">
                           <div className="flex items-center gap-2">
                             <div className="w-full bg-gray-100 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
@@ -673,7 +693,7 @@ export default function Dashboard() {
                           <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(value) => `₹${value.toLocaleString()}`} />
+                      <Tooltip formatter={(value) => value ? `₹${Number(value).toLocaleString()}` : ''} />
                       <Legend verticalAlign="bottom" height={36} iconType="circle" />
                     </RechartsPieChart>
                   </ResponsiveContainer>
@@ -835,7 +855,7 @@ export default function Dashboard() {
               iconColor="bg-warning-100 text-warning-600 dark:bg-warning-900/30 dark:text-warning-400"
             />
             <StatsCard
-              title="Engagement Velocity"
+              title="Campaign Progress"
               value={`${cmoData?.engagementVelocity || 0}%`}
               icon={TrendingUp}
               iconColor="bg-success-100 text-success-600 dark:bg-success-900/30 dark:text-success-400"
