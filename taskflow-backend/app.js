@@ -46,7 +46,7 @@ const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: process.env.NODE_ENV === 'production' ? 100 : 1000  // 1000 requests per 15min in dev
 });
-// app.use('/api/', limiter);
+app.use('/api/', limiter);
 
 // Routes
 app.get('/', async (req, res) => {
@@ -57,22 +57,6 @@ app.get('/', async (req, res) => {
   } catch (err) {
     res.status(500).send(`Backend is running, but database connection failed: ${err.message}`);
   }
-});
-
-app.get('/api/test-env', (req, res) => {
-  const sanitizeUrl = (url) => {
-    if (!url) return null;
-    return url.replace(/:[^:@]+@/, ':****@');
-  };
-  res.json({
-    DB_HOST: process.env.DB_HOST,
-    DB_PORT: process.env.DB_PORT,
-    DB_NAME: process.env.DB_NAME,
-    DB_USER: process.env.DB_USER,
-    DATABASE_URL: sanitizeUrl(process.env.DATABASE_URL),
-    POSTGRES_URL: sanitizeUrl(process.env.POSTGRES_URL),
-    HasConnectionUri: !!(process.env.DATABASE_URL || process.env.POSTGRES_URL)
-  });
 });
 
 app.use('/api/auth', authRoutes);
