@@ -18,14 +18,14 @@ const router = express.Router();
 // Apply authentication middleware to all routes
 router.use(protect);
 
-// Get all departments (admin only)
-router.get('/', authorize('admin'), getDepartments);
+// Get all departments (admin and executives)
+router.get('/', authorize('admin', 'ceo', 'cfo', 'cto', 'cmo'), getDepartments);
 
 // Get current user's managed departments
 router.get('/my-departments/list', getMyDepartments);
 
-// Create department (admin only)
-router.post('/', authorize('admin'), createDepartment);
+// Create department (admin and executives)
+router.post('/', authorize('admin', 'ceo', 'cfo', 'cto', 'cmo'), createDepartment);
 
 // Get single department
 router.get('/:id', getDepartment);
@@ -33,8 +33,8 @@ router.get('/:id', getDepartment);
 // Update department (admin or department manager)
 router.put('/:id', updateDepartment);
 
-// Delete department (admin only)
-router.delete('/:id', authorize('admin'), deleteDepartment);
+// Delete department (admin and executives)
+router.delete('/:id', authorize('admin', 'ceo', 'cfo', 'cto', 'cmo'), deleteDepartment);
 
 // Add member to department
 router.post('/:id/members', addMember);
