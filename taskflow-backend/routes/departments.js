@@ -19,7 +19,7 @@ const router = express.Router();
 router.use(protect);
 
 // Get all departments (admin and executives)
-router.get('/', authorize('admin', 'ceo', 'cfo', 'cto', 'cmo'), getDepartments);
+router.get('/', authorize('admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'), getDepartments);
 
 // Get current user's managed departments
 router.get('/my-departments/list', getMyDepartments);

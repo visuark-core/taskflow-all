@@ -166,11 +166,11 @@ export default function Departments() {
     }
   };
 
-  if (!currentUser || !['admin', 'ceo'].includes(currentUser.role)) {
+  if (!currentUser || !['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'].includes(currentUser.role)) {
     return (
       <div className="py-12 text-center">
         <h2 className="text-2xl font-bold text-red-600">Access Denied</h2>
-        <p className="mt-2 text-gray-600">Only admins and CEOs can manage departments.</p>
+        <p className="mt-2 text-gray-600">You are not authorized to view departments.</p>
       </div>
     );
   }
@@ -182,14 +182,16 @@ export default function Departments() {
           <Building2 className="text-primary-600 dark:text-primary-400" /> 
           Departments
         </h1>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="btn btn-primary flex items-center gap-1"
-          aria-label="Create Department"
-        >
-          <Plus className="h-4 w-4" />
-          Create Department
-        </button>
+        {['admin', 'ceo', 'cfo', 'cto', 'cmo'].includes(currentUser?.role || '') && (
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="btn btn-primary flex items-center gap-1"
+            aria-label="Create Department"
+          >
+            <Plus className="h-4 w-4" />
+            Create Department
+          </button>
+        )}
       </div>
 
       {loading && <p className="text-center text-gray-500">Loading departments...</p>}
@@ -207,14 +209,16 @@ export default function Departments() {
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-xl font-bold text-gray-900 dark:text-white">{dept.name}</h3>
                   <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => handleOpenEditModal(dept)}
-                      className="p-1.5 text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-50 dark:hover:bg-gray-800 rounded transition-colors"
-                      title="Edit Department"
-                    >
-                      <Pencil size={16} />
-                    </button>
-                    {currentUser?.role === 'admin' && (
+                    {(['admin', 'ceo', 'cfo', 'cto', 'cmo'].includes(currentUser?.role || '') || dept.departmentManager?.id === currentUser?.id) && (
+                      <button
+                        onClick={() => handleOpenEditModal(dept)}
+                        className="p-1.5 text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-50 dark:hover:bg-gray-800 rounded transition-colors"
+                        title="Edit Department"
+                      >
+                        <Pencil size={16} />
+                      </button>
+                    )}
+                    {['admin', 'ceo', 'cfo', 'cto', 'cmo'].includes(currentUser?.role || '') && (
                       <button
                         onClick={() => handleDelete(dept.id, dept.name)}
                         className="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-800 rounded transition-colors"

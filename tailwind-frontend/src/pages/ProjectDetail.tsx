@@ -23,7 +23,7 @@ export default function ProjectDetail() {
     project.owner?._id === currentUser?.id ||
     project.owner?.id === currentUser?.id ||
     project.members?.some((m: any) => (m.user?._id === currentUser?.id || m.user?.id === currentUser?.id) && m.role === 'admin') ||
-    currentUser?.role === 'admin'
+    ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'].includes(currentUser?.role || '')
   );
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -43,7 +43,7 @@ export default function ProjectDetail() {
     project.owner?._id === currentUser?.id ||
     project.owner?.id === currentUser?.id ||
     project.members?.some((m: any) => (m.user?._id === currentUser?.id || m.user?.id === currentUser?.id) && m.role === 'admin') ||
-    currentUser?.role === 'admin'
+    ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'].includes(currentUser?.role || '')
   );
 
   const handleOpenEdit = () => {

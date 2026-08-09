@@ -134,7 +134,7 @@ export default function Projects() {
     <div className="animate-fade-in space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Projects</h1>
-        {currentUser?.role === 'admin' && (
+        {currentUser && ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'].includes(currentUser.role) && (
           <button 
             className="btn btn-primary"
             onClick={() => setIsNewProjectModalOpen(true)}
@@ -242,7 +242,7 @@ export default function Projects() {
               key={project._id || project.id} 
               project={project} 
               onDelete={handleDeleteProject}
-              showDelete={currentUser?.role === 'admin'}
+              showDelete={currentUser && ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'].includes(currentUser.role)}
             />
           ))}
           {filteredProjects.length === 0 && (

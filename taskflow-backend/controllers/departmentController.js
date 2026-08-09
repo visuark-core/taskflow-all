@@ -3,7 +3,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const ErrorResponse = require('../utils/errorResponse');
 
 exports.getDepartments = asyncHandler(async (req, res, next) => {
-  const authorizedRoles = ['admin', 'ceo', 'cfo', 'cto', 'cmo'];
+  const authorizedRoles = ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'];
   if (!authorizedRoles.includes(req.user.role)) {
     return next(new ErrorResponse('Not authorized to view all departments', 403));
   }
@@ -47,7 +47,7 @@ exports.getDepartment = asyncHandler(async (req, res, next) => {
 
   if (!department) return next(new ErrorResponse('Department not found', 404));
 
-  const isAdminOrExecutive = ['admin', 'ceo', 'cfo', 'cto', 'cmo'].includes(req.user.role);
+  const isAdminOrExecutive = ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'].includes(req.user.role);
   const isManager = department.managerId === req.user.id;
   const isMember = department.members.some(m => m.id === req.user.id);
 

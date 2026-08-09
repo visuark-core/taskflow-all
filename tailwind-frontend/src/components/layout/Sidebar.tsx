@@ -54,7 +54,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
 
   const allowedAdminNav = adminNavigation.filter(item => {
     if (item.href === '/departments') {
-      return isAdmin || isCeo;
+      return isAdmin || isCeo || isManager;
     }
     if (item.href === '/user-management') {
       return isAdmin;
