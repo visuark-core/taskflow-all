@@ -109,17 +109,7 @@ app.use((req, res, next) => {
 // Error handler (last)
 app.use(errorHandler);
 
-const { sequelize, User } = require('./models');
-
-// Connect to MySQL and expose ready promise so callers can wait
-const connectPromise = sequelize.authenticate().then(() => {
-  console.log('MySQL connected');
-  User.count().then(count => console.log('Total users in DB:', count)).catch(e => console.log('Tables might not be created yet'));
-  return true;
-}).catch(err => {
-  console.error('MySQL connection error:', err);
-  throw err;
-});
+const connectPromise = Promise.resolve(true);
 
 // expose a ready promise to know when DB is connected
 app.ready = connectPromise;
