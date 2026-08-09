@@ -49,7 +49,18 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
   const location = useLocation();
   const user = useSelector((state: any) => state.auth.user);
   const isAdmin = user?.role === 'admin';
+  const isCeo = user?.role === 'ceo';
   const isManager = ['manager', 'department_manager'].includes(user?.role);
+
+  const allowedAdminNav = adminNavigation.filter(item => {
+    if (item.href === '/departments') {
+      return isAdmin || isCeo;
+    }
+    if (item.href === '/user-management') {
+      return isAdmin;
+    }
+    return false;
+  });
   
   return (
     <div className="flex h-full flex-col">
@@ -92,14 +103,14 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
 
 
 
-        {/* Admin Only Section */}
-        {isAdmin && (
+        {/* Admin/Management Section */}
+        {allowedAdminNav.length > 0 && (
           <>
             <div className="my-4 border-t border-gray-200 dark:border-gray-700"></div>
             <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-              Admin
+              Management
             </div>
-            {adminNavigation.map((item) => {
+            {allowedAdminNav.map((item) => {
               const isActive = location.pathname === item.href;
               
               return (

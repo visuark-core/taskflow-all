@@ -166,11 +166,11 @@ export default function Departments() {
     }
   };
 
-  if (!currentUser || currentUser.role !== 'admin') {
+  if (!currentUser || !['admin', 'ceo'].includes(currentUser.role)) {
     return (
       <div className="py-12 text-center">
         <h2 className="text-2xl font-bold text-red-600">Access Denied</h2>
-        <p className="mt-2 text-gray-600">Only admins can manage departments.</p>
+        <p className="mt-2 text-gray-600">Only admins and CEOs can manage departments.</p>
       </div>
     );
   }
