@@ -57,13 +57,13 @@ export default function NewProjectModal({ isOpen, onClose, onCreated }: NewProje
 
   useEffect(() => {
     if (isOpen) {
-      axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/teams`, {
+      axios.get(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`}/api/teams`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       .then(res => setTeams(res.data.data || []))
       .catch(console.error);
 
-      axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/users`, {
+      axios.get(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`}/api/users`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       .then(res => {
@@ -75,13 +75,13 @@ export default function NewProjectModal({ isOpen, onClose, onCreated }: NewProje
       })
       .catch(console.error);
 
-      axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/clients`, {
+      axios.get(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`}/api/clients`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       .then(res => setClients(res.data.data || []))
       .catch(console.error);
 
-      axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/services`, {
+      axios.get(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`}/api/services`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       .then(res => setServices(res.data.data || []))
@@ -126,7 +126,7 @@ export default function NewProjectModal({ isOpen, onClose, onCreated }: NewProje
         serviceId: formData.serviceId || undefined,
         budget: formData.budget || 0,
       };
-      await axios.post('http://localhost:5000/api/projects', form, {
+      await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/projects`, form, {
         headers: { Authorization: `Bearer ${token}` },
       });
       resetForm();

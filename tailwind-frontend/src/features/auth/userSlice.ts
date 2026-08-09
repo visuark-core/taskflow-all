@@ -31,7 +31,7 @@ export const fetchTeamMembers = createAsyncThunk<
   { rejectValue: string }
 >("users/fetchTeamMembers", async (_, { rejectWithValue }) => {
   try {
-    const response = await axios.get<TeamMember[]>("http://localhost:5000/api/team/members");
+    const response = await axios.get<TeamMember[]>(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/team/members`);
     return response.data;
   } catch (error: any) {
     return rejectWithValue(error.message || "Failed to fetch team members");

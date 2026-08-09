@@ -20,7 +20,7 @@ export default function Projects() {
 
   // Fetch team members on mount
   React.useEffect(() => {
-    fetch('http://localhost:5000/api/projects/team-members/list', {
+    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/projects/team-members/list`, {
       headers: { Authorization: token ? `Bearer ${token}` : '' }
     })
       .then(res => res.json())
@@ -33,11 +33,11 @@ export default function Projects() {
   React.useEffect(() => {
     setLoading(true);
     
-    let url = 'http://localhost:5000/api/projects';
+    let url = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/projects`;
     
     // If a member is selected, get their projects
     if (selectedMember) {
-      url = `http://localhost:5000/api/projects/team-member/${selectedMember}`;
+      url = `${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`}/api/projects/team-member/${selectedMember}`;
     }
     
     fetch(url, {
@@ -59,7 +59,7 @@ export default function Projects() {
     if (projectIds === lastTaskFetchId) return;
     setLastTaskFetchId(projectIds);
     
-    const base = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    const base = import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
     Promise.all(projects.map(p => 
       fetch(`${base}/tasks/project/${p._id || p.id}`, {
         headers: { Authorization: token ? `Bearer ${token}` : '' }
@@ -115,7 +115,7 @@ export default function Projects() {
       return;
     }
     try {
-      const res = await fetch(`http://localhost:5000/api/projects/${projectId}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`}/api/projects/${projectId}`, {
         method: 'DELETE',
         headers: { Authorization: token ? `Bearer ${token}` : '' }
       });

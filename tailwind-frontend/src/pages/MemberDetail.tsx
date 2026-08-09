@@ -25,7 +25,7 @@ export default function MemberDetail() {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    fetch(`http://localhost:5000/api/users/${id}`, {
+    fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`}/api/users/${id}`, {
       headers: { Authorization: token ? `Bearer ${token}` : '' }
     })
       .then(res => res.json())
@@ -42,7 +42,7 @@ export default function MemberDetail() {
     if (!dept) return;
 
     // Fetch all users and filter by department (server supports /api/users)
-    fetch(`http://localhost:5000/api/users`, { headers: { Authorization: token ? `Bearer ${token}` : '' } })
+    fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`}/api/users`, { headers: { Authorization: token ? `Bearer ${token}` : '' } })
       .then(res => res.json())
       .then(data => {
         const list = data.users || data.data || [];
@@ -183,7 +183,7 @@ export default function MemberDetail() {
                 setSaveSuccess(null);
                 setSaving(true);
                 try {
-                  const res = await fetch(`http://localhost:5000/api/users/${id}`, {
+                  const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`}/api/users/${id}`, {
                     method: 'PUT',
                     headers: {
                       'Content-Type': 'application/json',

@@ -51,7 +51,7 @@ export default function Settings() {
     try {
       setLoading(true);
       const res = await axios.put(
-        "http://localhost:5000/api/users/me",
+        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/users/me`,
         {
           fullName: formData.fullName,
           email: formData.email,

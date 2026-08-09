@@ -75,7 +75,7 @@ export default function ProjectDetail() {
 
     setUpdatingProject(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/projects/${id}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`}/api/projects/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -131,7 +131,7 @@ export default function ProjectDetail() {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`http://localhost:5000/api/projects/${id}`, {
+    fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`}/api/projects/${id}`, {
       headers: { Authorization: token ? `Bearer ${token}` : '' }
     })
       .then(res => res.json())
@@ -143,7 +143,7 @@ export default function ProjectDetail() {
   // Fetch tasks separately so we have populated assignee info
   useEffect(() => {
     if (!id) return;
-    fetch(`http://localhost:5000/api/tasks/project/${id}`, {
+    fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`}/api/tasks/project/${id}`, {
       headers: { Authorization: token ? `Bearer ${token}` : '' }
     })
       .then(res => res.json())
@@ -154,14 +154,14 @@ export default function ProjectDetail() {
   // Fetch clients for project edit dropdown
   useEffect(() => {
     if (isEditModalOpen) {
-      fetch('http://localhost:5000/api/clients', {
+      fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/clients`, {
         headers: { Authorization: token ? `Bearer ${token}` : '' }
       })
         .then(res => res.json())
         .then(data => setClients(data.data || []))
         .catch(() => setClients([]));
 
-      fetch('http://localhost:5000/api/services', {
+      fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/services`, {
         headers: { Authorization: token ? `Bearer ${token}` : '' }
       })
         .then(res => res.json())
@@ -180,7 +180,7 @@ export default function ProjectDetail() {
 
     setDeleting(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/projects/${id}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`}/api/projects/${id}`, {
         method: 'DELETE',
         headers: { Authorization: token ? `Bearer ${token}` : '' }
       });

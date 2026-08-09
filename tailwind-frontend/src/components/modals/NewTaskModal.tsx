@@ -31,10 +31,10 @@ export default function NewTaskModal({ isOpen, onClose, onSubmit }: NewTaskModal
     if (!isOpen) return;
     setLoading(true);
     Promise.all([
-      axios.get('http://localhost:5000/api/projects', {
+      axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/projects`, {
         headers: { Authorization: token ? `Bearer ${token}` : '' },
       }),
-      axios.get('http://localhost:5000/api/users', {
+      axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/users`, {
         headers: { Authorization: token ? `Bearer ${token}` : '' },
       })
     ]).then(([projectsRes, usersRes]) => {
@@ -71,7 +71,7 @@ export default function NewTaskModal({ isOpen, onClose, onSubmit }: NewTaskModal
       projectId: formData.project,
       dueDate: formData.dueDate ? new Date(formData.dueDate).toISOString() : undefined,
     };
-    axios.post('http://localhost:5000/api/tasks', payload, {
+    axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/tasks`, payload, {
       headers: {
         Authorization: token ? `Bearer ${token}` : '',
         'Content-Type': 'application/json',

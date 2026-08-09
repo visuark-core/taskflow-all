@@ -12,7 +12,7 @@ export default function Reports() {
     setLoading(true);
     setError(null);
 
-    const base = 'http://localhost:5000/api';
+    const base = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
 
     Promise.all([
       fetch(`${base}/tasks`, {

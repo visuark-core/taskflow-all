@@ -28,7 +28,7 @@ export default function TaskDetail() {
     if (!newComment.trim()) return;
 
     setSubmittingComment(true);
-    const base = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    const base = import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
     try {
       const response = await fetch(`${base}/tasks/${id}/comments`, {
         method: 'POST',
@@ -63,7 +63,7 @@ export default function TaskDetail() {
   const handleDeleteTask = async () => {
     if (!window.confirm('Are you sure you want to delete this task?')) return;
     
-    const base = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    const base = import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
     try {
       const response = await fetch(`${base}/tasks/${id}`, {
         method: 'DELETE',
@@ -92,7 +92,7 @@ export default function TaskDetail() {
     const isText = ['txt', 'log', 'json', 'js', 'ts', 'html', 'css', 'md'].includes(ext);
     if (isText) {
       const downloadUrl = previewFile.url.startsWith('/') 
-        ? `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}${previewFile.url}` 
+        ? `${import.meta.env.VITE_API_URL?.replace('/api', '') || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`}${previewFile.url}` 
         : previewFile.url;
       
       fetch(downloadUrl)
@@ -115,7 +115,7 @@ export default function TaskDetail() {
   };
 
   const updateChecklist = async (newChecklist: any[]) => {
-    const base = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    const base = import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
     try {
       const response = await fetch(`${base}/tasks/${id}`, {
         method: 'PUT',
@@ -167,7 +167,7 @@ export default function TaskDetail() {
     const formData = new FormData();
     formData.append('file', file);
 
-    const base = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    const base = import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
     try {
       const response = await fetch(`${base}/tasks/${id}/attachments`, {
         method: 'POST',
@@ -193,7 +193,7 @@ export default function TaskDetail() {
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    const base = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    const base = import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
     fetch(`${base}/tasks/${id}`, {
       headers: { Authorization: token ? `Bearer ${token}` : '' }
     })
@@ -343,7 +343,7 @@ export default function TaskDetail() {
             <ul className="space-y-2 max-h-60 overflow-y-auto">
               {(task.attachments || []).map((att: any) => {
                 const downloadUrl = att.url.startsWith('/') 
-                  ? `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}${att.url}` 
+                  ? `${import.meta.env.VITE_API_URL?.replace('/api', '') || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`}${att.url}` 
                   : att.url;
                 return (
                   <li key={att._id || att.id} className="flex items-center justify-between p-2.5 rounded-md border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-primary-300 dark:hover:border-primary-800 transition-colors">
@@ -455,7 +455,7 @@ export default function TaskDetail() {
               {(() => {
                 const ext = previewFile.filename.split('.').pop()?.toLowerCase() || '';
                 const downloadUrl = previewFile.url.startsWith('/') 
-                  ? `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}${previewFile.url}` 
+                  ? `${import.meta.env.VITE_API_URL?.replace('/api', '') || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`}${previewFile.url}` 
                   : previewFile.url;
 
                 if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) {
@@ -512,7 +512,7 @@ export default function TaskDetail() {
             <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 flex justify-end gap-3">
               <a 
                 href={previewFile.url.startsWith('/') 
-                  ? `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}${previewFile.url}` 
+                  ? `${import.meta.env.VITE_API_URL?.replace('/api', '') || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`}${previewFile.url}` 
                   : previewFile.url}
                 download
                 className="btn border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 flex items-center gap-2"

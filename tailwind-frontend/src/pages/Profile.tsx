@@ -82,7 +82,7 @@ export default function Profile() {
   const getAvatarUrl = (avatarUrl?: string) => {
     if (!avatarUrl) return `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random`;
     if (avatarUrl.startsWith('http')) return avatarUrl;
-    return `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${avatarUrl}`;
+    return `${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`}${avatarUrl}`;
   };
 
   return (

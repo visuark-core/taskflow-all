@@ -36,7 +36,7 @@ export default function EditTaskModal({ isOpen, onClose, onSubmit, task }: EditT
   useEffect(() => {
     if (!isOpen) return;
     setLoading(true);
-    const base = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    const base = import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
     Promise.all([
       axios.get(`${base}/projects`, {
         headers: { Authorization: token ? `Bearer ${token}` : '' },
@@ -79,7 +79,7 @@ export default function EditTaskModal({ isOpen, onClose, onSubmit, task }: EditT
       dueDate: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
     };
     
-    const base = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    const base = import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
     const taskId = task?._id || task?.id;
 
     axios.put(`${base}/tasks/${taskId}`, payload, {

@@ -41,7 +41,7 @@ export default function KanbanColumn({ title, tasks, columnId, onMove }: KanbanC
     if (fromStatus === columnId) return;
 
     // call API to reorder (backend endpoint: PUT /api/tasks/reorder)
-    const base = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    const base = import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
     try {
       const res = await fetch(`${base}/tasks/reorder`, {
         method: 'PUT',
