@@ -28,6 +28,9 @@ const { startCronJobs } = require('./utils/cronJobs');
 
 const app = express();
 
+// Trust reverse proxy (Vercel) for rate-limiting
+app.set('trust proxy', 1);
+
 // Body parser
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
