@@ -51,8 +51,7 @@ app.use('/api/', limiter);
 // Routes
 app.get('/', async (req, res) => {
   try {
-    const { sequelize, User } = require('./models');
-    await sequelize.authenticate();
+    const { User } = require('./models');
     const count = await User.count();
     res.send(`Backend is running successfully and API connected successfully! Total users in DB: ${count}`);
   } catch (err) {

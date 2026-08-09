@@ -72,12 +72,21 @@ if (useSsl) {
   };
 }
 
+const pool = {
+  max: 2,
+  min: 0,
+  idle: 0,
+  acquire: 3000,
+  evict: 1000
+};
+
 const sequelize = connectionUri
   ? new Sequelize(connectionUri, {
       dialect: "postgres",
       dialectModule: pg,
       dialectOptions,
       logging: false,
+      pool,
     })
   : new Sequelize(
       process.env.DB_NAME,
@@ -90,6 +99,7 @@ const sequelize = connectionUri
         dialectModule: pg,
         dialectOptions,
         logging: false,
+        pool,
       }
     );
 
