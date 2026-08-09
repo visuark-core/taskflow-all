@@ -6,12 +6,13 @@ const {
   updateClient,
   deleteClient
 } = require('../controllers/clientController');
-const { protect, authorize } = require('../middlewares/auth');
+const { protect, authorize, authorizeFinance } = require('../middlewares/auth');
 
 const router = express.Router();
 
 // Protect all routes under /api/clients
 router.use(protect);
+router.use(authorizeFinance);
 
 // GET all clients
 router.get('/', getClients);

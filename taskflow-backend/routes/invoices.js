@@ -6,11 +6,12 @@ const {
   updateInvoice,
   deleteInvoice
 } = require('../controllers/invoiceController');
-const { protect, authorize } = require('../middlewares/auth');
+const { protect, authorize, authorizeFinance } = require('../middlewares/auth');
 
 const router = express.Router();
 
 router.use(protect);
+router.use(authorizeFinance);
 
 router.get('/', getInvoices);
 router.get('/:id', getInvoice);

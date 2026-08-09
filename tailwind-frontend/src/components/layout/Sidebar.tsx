@@ -61,7 +61,18 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
     }
     return false;
   });
-  
+  const isFinanceAuthorized = user && (
+    ['admin', 'ceo', 'cfo'].includes(user.role) ||
+    (['manager', 'department_manager'].includes(user.role) && user.department?.toLowerCase() === 'finance')
+  );
+
+  const allowedNav = navigation.filter(item => {
+    if (['/clients', '/billing', '/salary'].includes(item.href)) {
+      return isFinanceAuthorized;
+    }
+    return true;
+  });
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-16 items-center px-2">
@@ -74,7 +85,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
       </div>
       
       <nav className="mt-8 flex-1 space-y-1 px-2">
-        {navigation.map((item) => {
+        {allowedNav.map((item) => {
           const isActive = location.pathname === item.href;
           
           return (

@@ -5,11 +5,12 @@ const {
   updateService,
   deleteService
 } = require('../controllers/serviceController');
-const { protect, authorize } = require('../middlewares/auth');
+const { protect, authorize, authorizeFinance } = require('../middlewares/auth');
 
 const router = express.Router();
 
 router.use(protect);
+router.use(authorizeFinance);
 
 router.get('/', getServices);
 

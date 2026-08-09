@@ -170,6 +170,20 @@ export default function Clients() {
     );
   });
 
+  const isFinanceAuthorized = currentUser && (
+    ['admin', 'ceo', 'cfo'].includes(currentUser.role) ||
+    (['manager', 'department_manager'].includes(currentUser.role) && currentUser.department?.toLowerCase() === 'finance')
+  );
+
+  if (!isFinanceAuthorized) {
+    return (
+      <div className="py-12 text-center bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-8 max-w-md mx-auto mt-12">
+        <h2 className="text-2xl font-bold text-red-600 mb-2">Access Denied</h2>
+        <p className="text-gray-600 dark:text-gray-400 font-medium">Only admins, CEOs, and finance managers can access client details.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
       {/* Header */}

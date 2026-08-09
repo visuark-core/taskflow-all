@@ -63,3 +63,25 @@ exports.authorize = (...roles) => {
     next();
   };
 };
+
+// Authorize finance access - restricts to admin, ceo, cfo, and manager/department_manager with finance department
+exports.authorizeFinance = (req, res, next) => {
+  if (!req.user) {
+    return next(new ErrorResponse('Not authorized to access this route', 401));
+  }
+
+  const isFinanceAuthorized = 
+    ['admin', 'ceo', 'cfo'].includes(req.user.role) ||
+    (['manager', 'department_manager'].includes(req.user.role) && req.user.department?.toLowerCase() === 'finance');
+
+  if (!isFinanceAuthorized) {
+    return next(
+      new ErrorResponse(
+        `User role '${req.user.role}' in department '${req.user.department}' is not authorized to access this route`,
+        403
+      )
+    );
+  }
+
+  next();
+};

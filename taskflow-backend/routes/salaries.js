@@ -7,11 +7,12 @@ const {
   updatePayout,
   deletePayout
 } = require('../controllers/salaryController');
-const { protect } = require('../middlewares/auth');
+const { protect, authorizeFinance } = require('../middlewares/auth');
 
 const router = express.Router();
 
 router.use(protect);
+router.use(authorizeFinance);
 
 router.get('/', getSalaryDetails);
 router.post('/detail', upsertSalaryDetail);
