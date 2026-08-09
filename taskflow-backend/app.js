@@ -28,6 +28,36 @@ const { startCronJobs } = require('./utils/cronJobs');
 
 const app = express();
 
+// In-memory request log buffer for Vercel diagnostics
+global.requestLogs = global.requestLogs || [];
+app.use((req, res, next) => {
+  const logEntry = {
+    time: new Date().toISOString(),
+    method: req.method,
+    url: req.originalUrl || req.url,
+    headers: {
+      origin: req.headers.origin,
+      referer: req.headers.referer,
+      'user-agent': req.headers['user-agent'],
+      authorization: req.headers.authorization ? 'Bearer Present' : 'None'
+    },
+    status: 'pending',
+    duration: 0
+  };
+  global.requestLogs.push(logEntry);
+  if (global.requestLogs.length > 100) {
+    global.requestLogs.shift();
+  }
+  
+  const start = Date.now();
+  res.on('finish', () => {
+    logEntry.status = res.statusCode;
+    logEntry.duration = Date.now() - start;
+  });
+  
+  next();
+});
+
 // Trust reverse proxy (Vercel) for rate-limiting
 app.set('trust proxy', 1);
 
@@ -69,6 +99,14 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 
 // Routes
+app.get('/api/request-logs', (req, res) => {
+  res.json({
+    success: true,
+    count: global.requestLogs.length,
+    logs: global.requestLogs
+  });
+});
+
 app.get('/', async (req, res) => {
   try {
     const { User } = require('./models');
