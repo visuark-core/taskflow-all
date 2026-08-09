@@ -11,6 +11,13 @@ exports.register = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse('Company name is required', 400));
   }
 
+  if (email === 'admin@visuark.com' && role !== 'admin') {
+    return next(new ErrorResponse('The role of admin@visuark.com must be admin', 400));
+  }
+  if (email === 'ceo@visuark.com' && role !== 'ceo') {
+    return next(new ErrorResponse('The role of ceo@visuark.com must be ceo', 400));
+  }
+
   const user = await User.create({
     name,
     email,

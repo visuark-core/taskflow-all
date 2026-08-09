@@ -147,6 +147,21 @@ exports.updateUser = asyncHandler(async (req, res, next) => {
     return res.status(404).json({ success: false, message: 'User not found' });
   }
 
+  // Restrict changing roles/details for admin@visuark.com or ceo@visuark.com
+  const isProtectedUser = user.email === 'admin@visuark.com' || user.email === 'ceo@visuark.com';
+  const targetEmail = req.body.email || user.email;
+  const isTargetingProtected = targetEmail === 'admin@visuark.com' || targetEmail === 'ceo@visuark.com';
+
+  if (isProtectedUser || isTargetingProtected) {
+    const expectedRole = targetEmail === 'admin@visuark.com' ? 'admin' : 'ceo';
+    if (req.body.role && req.body.role !== expectedRole) {
+      return res.status(400).json({
+        success: false,
+        error: `The role for ${targetEmail} is locked to '${expectedRole}' and cannot be changed.`
+      });
+    }
+  }
+
   // Restrict managers from editing admins/ceos or assigning admin/ceo roles
   if (['manager', 'department_manager'].includes(req.user.role)) {
     if (['admin', 'ceo'].includes(user.role)) {
