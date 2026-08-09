@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useAppSelector } from '../hooks/hook';
 
 interface User {
   id: string;
@@ -39,6 +40,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const reduxUser = useAppSelector((state) => state.auth.user);
+
+  // Sync context user state with Redux auth state
+  useEffect(() => {
+    setUser(reduxUser);
+  }, [reduxUser]);
 
   // Check if user is already logged in on mount
   useEffect(() => {
