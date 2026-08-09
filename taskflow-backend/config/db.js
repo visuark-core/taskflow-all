@@ -78,6 +78,13 @@ const sequelize = connectionUri
       dialectModule: pg,
       dialectOptions,
       logging: false,
+      pool: {
+        max: 2,
+        min: 0,
+        acquire: 10000,
+        idle: 2000,
+        evict: 2000
+      }
     })
   : new Sequelize(
       process.env.DB_NAME,
@@ -90,6 +97,13 @@ const sequelize = connectionUri
         dialectModule: pg,
         dialectOptions,
         logging: false,
+        pool: {
+          max: 2,
+          min: 0,
+          acquire: 10000,
+          idle: 2000,
+          evict: 2000
+        }
       }
     );
 
