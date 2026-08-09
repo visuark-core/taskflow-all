@@ -42,6 +42,16 @@ import { useSelector } from 'react-redux';
 import type { RootState } from '../app/store';
 import { cn } from '../lib/utils';
 
+// Helper to fetch with an enforced timeout
+const fetchWithTimeout = (url: string, options: any, timeoutMs = 8000) => {
+  return Promise.race([
+    fetch(url, options),
+    new Promise<Response>((_, reject) =>
+      setTimeout(() => reject(new Error(`Timeout fetching ${url}`)), timeoutMs)
+    )
+  ]);
+};
+
 export default function Dashboard() {
   const [projects, setProjects] = useState<any[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
@@ -65,12 +75,21 @@ export default function Dashboard() {
 
   useEffect(() => {
     setLoading(true);
+    console.log('[Diagnostic] Current User Role:', currentUser?.role);
     
     if (currentUser?.role === 'admin') {
-      const fetchJson = (url: string) =>
-        fetch(url, { headers: { Authorization: token ? `Bearer ${token}` : '' } })
-          .then(r => r.ok ? r.json() : null)
-          .catch(() => null);
+      const fetchJson = (url: string) => {
+        console.log(`[Diagnostic] Fetching: ${url}`);
+        return fetchWithTimeout(url, { headers: { Authorization: token ? `Bearer ${token}` : '' } }, 8000)
+          .then(r => {
+            console.log(`[Diagnostic] Status received for ${url}: ${r.status}`);
+            return r.ok ? r.json() : null;
+          })
+          .catch(err => {
+            console.warn(`[Diagnostic] Error or timeout for ${url}:`, err);
+            return null;
+          });
+      };
 
       Promise.all([
         fetchJson(`${base}/reports/ceo`),
@@ -81,6 +100,7 @@ export default function Dashboard() {
         fetchJson(`${base}/projects`)
       ])
       .then(([ceoRes, cfoRes, ctoRes, cmoRes, prodRes, projRes]) => {
+        console.log('[Diagnostic] Finished fetching all admin reports');
         if (ceoRes && ceoRes.success) setCeoData(ceoRes.data);
         if (cfoRes && cfoRes.success) setCfoData(cfoRes.data);
         if (ctoRes && ctoRes.success) setCtoData(ctoRes.data);
@@ -91,28 +111,34 @@ export default function Dashboard() {
         }
       })
       .catch((err) => console.error('Error fetching founder command dashboard data', err))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        console.log('[Diagnostic] Setting loading to false (admin path)');
+        setLoading(false);
+      });
     } else {
       // Normal user / manager dashboard
+      const fetchJsonSafe = (url: string, fallback: any) => {
+        console.log(`[Diagnostic] Fetching non-admin: ${url}`);
+        return fetchWithTimeout(url, { headers: { Authorization: token ? `Bearer ${token}` : '' } }, 8000)
+          .then(r => {
+            console.log(`[Diagnostic] Status received for non-admin ${url}: ${r.status}`);
+            return r.ok ? r.json() : fallback;
+          })
+          .then(d => d?.data || d?.projects || d?.tasks || d || fallback)
+          .catch(err => {
+            console.warn(`[Diagnostic] Error or timeout for non-admin ${url}:`, err);
+            return fallback;
+          });
+      };
+
       Promise.all([
-        fetch(`${base}/projects`, { headers: { Authorization: token ? `Bearer ${token}` : '' } })
-          .then(r => r.json())
-          .then(d => d.data || d.projects || [])
-          .catch(() => []),
-        fetch(`${base}/tasks`, { headers: { Authorization: token ? `Bearer ${token}` : '' } })
-          .then(r => r.json())
-          .then(d => d.data || d.tasks || [])
-          .catch(() => []),
-        fetch(`${base}/activities`, { headers: { Authorization: token ? `Bearer ${token}` : '' } })
-          .then(r => r.json())
-          .then(d => d.data || d.activities || [])
-          .catch(() => []),
-        fetch(`${base}/projects/team-members/list`, { headers: { Authorization: token ? `Bearer ${token}` : '' } })
-          .then(r => r.json())
-          .then(d => d.data || [])
-          .catch(() => [])
+        fetchJsonSafe(`${base}/projects`, []),
+        fetchJsonSafe(`${base}/tasks`, []),
+        fetchJsonSafe(`${base}/activities`, []),
+        fetchJsonSafe(`${base}/projects/team-members/list`, [])
       ])
       .then(([projectList, taskList, activityList, memberList]) => {
+        console.log('[Diagnostic] Finished fetching non-admin data');
         const projectIds = (projectList || []).map((p: any) => (p.id || p._id)?.toString());
         const filteredTasks = (taskList || []).filter((t: any) => {
           const taskProjectId = t.projectId || t.Project?.id || (typeof t.project === 'object' ? t.project?._id || t.project?.id : t.project);
@@ -160,8 +186,11 @@ export default function Dashboard() {
           teamMembers: (memberList || []).length
         });
       })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+      .catch((err) => console.error('Error fetching non-admin data', err))
+      .finally(() => {
+        console.log('[Diagnostic] Setting loading to false (non-admin path)');
+        setLoading(false);
+      });
     }
   }, [token, base, refreshCounter, currentUser]);
 
@@ -430,7 +459,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-gray-900 dark:text-white">Task Completion State</h3>
               {ceoData?.taskStats?.overdue > 0 && (
-                <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400 rounded animate-pulse">
+                <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400 rounded animate-pulse">
                   <AlertCircle size={12} /> {ceoData.taskStats.overdue} Overdue
                 </span>
               )}
