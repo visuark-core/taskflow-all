@@ -49,6 +49,17 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 
 // Routes
+app.get('/', async (req, res) => {
+  try {
+    const { sequelize, User } = require('./models');
+    await sequelize.authenticate();
+    const count = await User.count();
+    res.send(`Backend is running successfully and API connected successfully! Total users in DB: ${count}`);
+  } catch (err) {
+    res.status(500).send(`Backend is running, but database connection failed: ${err.message}`);
+  }
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/projects', projectRoutes);
