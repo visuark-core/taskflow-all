@@ -33,8 +33,25 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Enable CORS
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'https://remarkable-mandazi-a53c25.netlify.app'
+].filter(Boolean);
+
 app.use(cors({
-  origin: [process.env.CLIENT_URL, 'http://localhost:5173', 'http://localhost:5174', 'https://remarkable-mandazi-a53c25.netlify.app'].filter(Boolean),
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    const isAllowed = allowedOrigins.includes(origin) || 
+                      origin.endsWith('.vercel.app') || 
+                      origin.endsWith('.netlify.app');
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 
