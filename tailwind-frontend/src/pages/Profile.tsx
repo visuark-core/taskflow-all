@@ -58,11 +58,20 @@ export default function Profile() {
     }
   };
 
+  // Cropper states
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [cropOffset, setCropOffset] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [imageAspect, setImageAspect] = useState(1);
+  const [isCropping, setIsCropping] = useState(false);
+
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -72,10 +81,131 @@ export default function Profile() {
     }
 
     setUploadError('');
+    const reader = new FileReader();
+    reader.onload = () => {
+      setSelectedImage(reader.result as string);
+      setZoom(1);
+      setCropOffset({ x: 0, y: 0 });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const { naturalWidth, naturalHeight } = e.currentTarget;
+    setImageAspect(naturalWidth / naturalHeight);
+  };
+
+  // Drag handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - cropOffset.x, y: e.clientY - cropOffset.y });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    setCropOffset({
+      x: e.clientX - dragStart.x,
+      y: e.clientY - dragStart.y
+    });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  // Mobile touch handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    setIsDragging(true);
+    setDragStart({
+      x: e.touches[0].clientX - cropOffset.x,
+      y: e.touches[0].clientY - cropOffset.y
+    });
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging || e.touches.length !== 1) return;
+    setCropOffset({
+      x: e.touches[0].clientX - dragStart.x,
+      y: e.touches[0].clientY - dragStart.y
+    });
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+  };
+
+  // Canvas cropper helper
+  const getCroppedImg = (
+    imageSrc: string,
+    offset: { x: number; y: number },
+    zoom: number,
+    cropSize = 256
+  ): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.src = imageSrc;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = cropSize;
+        canvas.height = cropSize;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('No 2d context'));
+          return;
+        }
+
+        // Clip to circle
+        ctx.beginPath();
+        ctx.arc(cropSize / 2, cropSize / 2, cropSize / 2, 0, 2 * Math.PI);
+        ctx.clip();
+
+        const ratio = cropSize / 192; // circle guide width is 192px
+        const aspect = img.width / img.height;
+        let visualHeight = 256;
+        let visualWidth = 256;
+
+        if (aspect > 1) {
+          visualHeight = 256;
+          visualWidth = 256 * aspect;
+        } else {
+          visualWidth = 256;
+          visualHeight = 256 / aspect;
+        }
+
+        const dw = visualWidth * ratio * zoom;
+        const dh = visualHeight * ratio * zoom;
+
+        const dx = cropSize / 2 - dw / 2 + offset.x * ratio;
+        const dy = cropSize / 2 - dh / 2 + offset.y * ratio;
+
+        ctx.drawImage(img, dx, dy, dw, dh);
+
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            reject(new Error('Canvas to Blob failed'));
+            return;
+          }
+          const file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' });
+          resolve(file);
+        }, 'image/jpeg', 0.95);
+      };
+      img.onerror = (err) => reject(err);
+    });
+  };
+
+  const handleCropSave = async () => {
+    if (!selectedImage) return;
+    setIsCropping(true);
+    setUploadError('');
     try {
-      await dispatch(uploadUserAvatar(file)).unwrap();
+      const croppedFile = await getCroppedImg(selectedImage, cropOffset, zoom);
+      await dispatch(uploadUserAvatar(croppedFile)).unwrap();
+      setSelectedImage(null);
     } catch (err) {
-      setUploadError(err as string || 'Failed to upload avatar');
+      setUploadError(err as string || 'Failed to crop and upload image');
+    } finally {
+      setIsCropping(false);
     }
   };
 
@@ -284,6 +414,107 @@ export default function Profile() {
           )}
         </div>
       </div>
+
+      {/* Cropper Modal */}
+      {selectedImage && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl border border-gray-100 dark:border-gray-700 animate-scale-in">
+            
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Crop Profile Picture
+              </h3>
+              <button 
+                onClick={() => setSelectedImage(null)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Crop Workspace */}
+            <div 
+              className="h-72 relative bg-gray-950 overflow-hidden cursor-grab active:cursor-grabbing select-none"
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
+              <img
+                src={selectedImage}
+                alt="To crop"
+                onLoad={handleImageLoad}
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: `translate(calc(-50% + ${cropOffset.x}px), calc(-50% + ${cropOffset.y}px)) scale(${zoom})`,
+                  userSelect: 'none',
+                  pointerEvents: 'none',
+                  maxHeight: 'none',
+                  maxWidth: 'none',
+                  ...(imageAspect > 1 ? { height: '256px', width: 'auto' } : { width: '256px', height: 'auto' })
+                }}
+              />
+              
+              {/* Circular Overlay Mask */}
+              <div 
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 rounded-full border-2 border-dashed border-white pointer-events-none shadow-[0_0_0_9999px_rgba(0,0,0,0.6)]"
+              />
+            </div>
+
+            {/* Slider and Controls */}
+            <div className="p-6 space-y-5">
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs font-medium text-gray-500 dark:text-gray-400">
+                  <span>Zoom Out</span>
+                  <span>Zoom In</span>
+                </div>
+                <input
+                  type="range"
+                  min="1"
+                  max="3"
+                  step="0.02"
+                  value={zoom}
+                  onChange={(e) => setZoom(parseFloat(e.target.value))}
+                  className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary-600"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedImage(null)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCropSave}
+                  disabled={isCropping}
+                  className="px-5 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors flex items-center gap-2 disabled:opacity-75"
+                >
+                  {isCropping ? (
+                    <>
+                      <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Saving...
+                    </>
+                  ) : (
+                    'Apply & Save'
+                  )}
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 }
