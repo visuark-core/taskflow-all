@@ -28,7 +28,7 @@ export default function TaskDetail() {
     if (!newComment.trim()) return;
 
     setSubmittingComment(true);
-    const base = import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
+    const base = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
     try {
       const response = await fetch(`${base}/tasks/${id}/comments`, {
         method: 'POST',
@@ -63,7 +63,7 @@ export default function TaskDetail() {
   const handleDeleteTask = async () => {
     if (!window.confirm('Are you sure you want to delete this task?')) return;
     
-    const base = import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
+    const base = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
     try {
       const response = await fetch(`${base}/tasks/${id}`, {
         method: 'DELETE',
@@ -115,7 +115,7 @@ export default function TaskDetail() {
   };
 
   const updateChecklist = async (newChecklist: any[]) => {
-    const base = import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
+    const base = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
     try {
       const response = await fetch(`${base}/tasks/${id}`, {
         method: 'PUT',
@@ -167,7 +167,7 @@ export default function TaskDetail() {
     const formData = new FormData();
     formData.append('file', file);
 
-    const base = import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
+    const base = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
     try {
       const response = await fetch(`${base}/tasks/${id}/attachments`, {
         method: 'POST',
@@ -193,7 +193,7 @@ export default function TaskDetail() {
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    const base = import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
+    const base = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
     fetch(`${base}/tasks/${id}`, {
       headers: { Authorization: token ? `Bearer ${token}` : '' }
     })

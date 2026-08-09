@@ -19,7 +19,7 @@ export default function Dashboard() {
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const [refreshCounter, setRefreshCounter] = useState(0);
   const token = localStorage.getItem('token');
-  const base = import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
+  const base = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
   const currentUser = useSelector((state: RootState) => state.auth.user);
   const isManager = ['manager', 'department_manager'].includes(currentUser?.role || '');
 

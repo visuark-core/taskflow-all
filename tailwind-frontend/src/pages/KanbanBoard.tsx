@@ -26,7 +26,7 @@ export default function KanbanBoard() {
 
   useEffect(() => {
     // fetch user's projects for the selector
-    const base = import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
+    const base = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
     fetch(`${base}/projects`, { headers: { Authorization: token ? `Bearer ${token}` : '' } })
       .then(r => r.json())
       .then(data => {
@@ -40,7 +40,7 @@ export default function KanbanBoard() {
 
   useEffect(() => {
     setLoading(true);
-    const base = import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
+    const base = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
 
     // normalize helper
     const normalize = (s: any) => {

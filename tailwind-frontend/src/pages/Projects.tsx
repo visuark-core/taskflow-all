@@ -59,7 +59,7 @@ export default function Projects() {
     if (projectIds === lastTaskFetchId) return;
     setLastTaskFetchId(projectIds);
     
-    const base = import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
+    const base = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
     Promise.all(projects.map(p => 
       fetch(`${base}/tasks/project/${p._id || p.id}`, {
         headers: { Authorization: token ? `Bearer ${token}` : '' }

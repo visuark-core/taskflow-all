@@ -2,7 +2,7 @@ import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import axios from "axios";
 
 const getBaseApiUrl = () => {
-  const url = import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
+  const url = import.meta.env.VITE_API_URL || 'http://localhost:5000';
   return url.endsWith('/api') ? url : `${url}/api`;
 };
 

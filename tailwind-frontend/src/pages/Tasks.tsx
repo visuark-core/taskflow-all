@@ -44,7 +44,7 @@ export default function Tasks() {
   const fetchAllTasks = React.useCallback(async () => {
     setLoading(true);
     try {
-      const base = import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
+      const base = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
       const promises = projects ? projects.map((p: any) =>
         fetch(`${base}/tasks/project/${p._id || p.id}`, {
           headers: { Authorization: `Bearer ${token}` }
@@ -121,7 +121,7 @@ export default function Tasks() {
       return;
     }
     try {
-      const base = import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
+      const base = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
       const res = await fetch(`${base}/tasks/${taskId}`, {
         method: 'DELETE',
         headers: { Authorization: token ? `Bearer ${token}` : '' }

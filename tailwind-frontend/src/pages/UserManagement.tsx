@@ -42,7 +42,7 @@ export default function UserManagement() {
   const [departments, setDepartments] = useState<any[]>([]);
 
   const token = localStorage.getItem('token');
-  const base = import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
+  const base = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
   const currentUser = useSelector((state: any) => state.auth.user);
 
   const togglePasswordVisibility = (userId: string) => {

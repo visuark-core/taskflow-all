@@ -25,7 +25,7 @@ export default function Calendar() {
 
   // Fetch projects list
   useEffect(() => {
-    const base = import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
+    const base = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
     fetch(`${base}/projects`, { headers: { Authorization: token ? `Bearer ${token}` : '' } })
       .then(r => r.json())
       .then(data => {
@@ -39,7 +39,7 @@ export default function Calendar() {
   // Fetch tasks
   useEffect(() => {
     setLoading(true);
-    const base = import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
+    const base = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
 
     if (selectedProject === '') {
       if (!projects || projects.length === 0) {
@@ -100,7 +100,7 @@ export default function Calendar() {
       }
     }
 
-    const base = import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
+    const base = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
     try {
       const tid = selectedTask._id || selectedTask.id;
       const response = await fetch(`${base}/tasks/${tid}`, {

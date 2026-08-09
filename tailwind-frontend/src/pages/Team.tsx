@@ -15,7 +15,7 @@ export default function Team() {
   const [error, setError] = useState<string | null>(null);
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
 
-  const API_URL = import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`;
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({

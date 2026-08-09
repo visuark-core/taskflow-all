@@ -28,7 +28,7 @@ export default function Navbar({ children }: NavbarProps) {
   const fetchNotifications = async () => {
     if (!user) return;
     try {
-      const base = import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
+      const base = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
       const token = localStorage.getItem('token');
       const res = await fetch(`${base}/notifications`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -46,7 +46,7 @@ export default function Navbar({ children }: NavbarProps) {
   const markAllNotificationsAsRead = async () => {
     if (notificationUnreadCount === 0) return;
     try {
-      const base = import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
+      const base = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
       const token = localStorage.getItem('token');
       await fetch(`${base}/notifications/read-all`, {
         method: 'PUT',
