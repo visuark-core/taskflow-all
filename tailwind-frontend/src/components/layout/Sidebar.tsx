@@ -57,7 +57,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
       return isAdmin || isCeo || isManager;
     }
     if (item.href === '/user-management') {
-      return isAdmin;
+      return isAdmin || isCeo || isManager;
     }
     return false;
   });

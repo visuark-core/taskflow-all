@@ -59,8 +59,9 @@ exports.getDepartment = asyncHandler(async (req, res, next) => {
 });
 
 exports.createDepartment = asyncHandler(async (req, res, next) => {
-  if (req.user.role !== 'admin') {
-    return next(new ErrorResponse('Only admins can create departments', 403));
+  const allowedRoles = ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'];
+  if (!allowedRoles.includes(req.user.role)) {
+    return next(new ErrorResponse('Not authorized to create departments', 403));
   }
 
   const { name, description, manager: managerId, budget, settings } = req.body;

@@ -24,8 +24,8 @@ router.get('/', authorize('admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'depar
 // Get current user's managed departments
 router.get('/my-departments/list', getMyDepartments);
 
-// Create department (admin and executives)
-router.post('/', authorize('admin', 'ceo', 'cfo', 'cto', 'cmo'), createDepartment);
+// Create department (admin, executives, and managers)
+router.post('/', authorize('admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'), createDepartment);
 
 // Get single department
 router.get('/:id', getDepartment);

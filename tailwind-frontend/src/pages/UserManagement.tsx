@@ -45,6 +45,13 @@ export default function UserManagement() {
   const base = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
   const currentUser = useSelector((state: any) => state.auth.user);
 
+  const filteredRoles = ROLES.filter(r => {
+    if (['manager', 'department_manager'].includes(currentUser?.role || '')) {
+      return !['admin', 'ceo'].includes(r);
+    }
+    return true;
+  });
+
   const togglePasswordVisibility = (userId: string) => {
     setVisiblePasswords(prev => ({ ...prev, [userId]: !prev[userId] }));
   };
@@ -77,7 +84,7 @@ export default function UserManagement() {
   };
 
   useEffect(() => {
-    if (currentUser?.role === 'admin') {
+    if (currentUser && ['admin', 'ceo', 'manager', 'department_manager'].includes(currentUser.role)) {
       fetchUsers();
       fetchDepartments();
     }
@@ -196,11 +203,11 @@ export default function UserManagement() {
     }
   };
 
-  if (!currentUser || currentUser.role !== 'admin') {
+  if (!currentUser || !['admin', 'ceo', 'manager', 'department_manager'].includes(currentUser.role)) {
     return (
       <div className="py-12 text-center">
         <h2 className="text-2xl font-bold text-red-600">Access Denied</h2>
-        <p className="mt-2 text-gray-600">Only admins can manage users.</p>
+        <p className="mt-2 text-gray-600">You are not authorized to manage users.</p>
       </div>
     );
   }
@@ -314,14 +321,16 @@ export default function UserManagement() {
                     {/* Actions */}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => openEditModal(user)}
-                          className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50 transition-colors"
-                          title="Edit user"
-                        >
-                          <Pencil size={13} /> Edit
-                        </button>
-                        {String(currentUser?.id) !== String(user.id) && (
+                        {(!['manager', 'department_manager'].includes(currentUser?.role || '') || !['admin', 'ceo'].includes(user.role)) && (
+                          <button
+                            onClick={() => openEditModal(user)}
+                            className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50 transition-colors"
+                            title="Edit user"
+                          >
+                            <Pencil size={13} /> Edit
+                          </button>
+                        )}
+                        {currentUser?.role === 'admin' && String(currentUser?.id) !== String(user.id) && (
                           <button
                             onClick={() => handleDeleteUser(user.id, user.name)}
                             className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50 transition-colors"
@@ -369,7 +378,7 @@ export default function UserManagement() {
                 <div>
                   <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Role</label>
                   <select value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value })} className="input">
-                    {ROLES.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
+                    {filteredRoles.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
                   </select>
                 </div>
                 <div>
@@ -446,7 +455,7 @@ export default function UserManagement() {
                 <div>
                   <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Role</label>
                   <select value={editFormData.role} onChange={e => setEditFormData({ ...editFormData, role: e.target.value })} className="input">
-                    {ROLES.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
+                    {filteredRoles.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
                   </select>
                 </div>
                 <div>

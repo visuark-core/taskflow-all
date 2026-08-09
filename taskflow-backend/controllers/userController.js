@@ -66,11 +66,16 @@ exports.uploadAvatar = asyncHandler(async (req, res, next) => {
 
 // Create user (admin)
 exports.createUser = asyncHandler(async (req, res, next) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({ success: false, error: 'Only admins can create users' });
+  const allowedRoles = ['admin', 'ceo', 'manager', 'department_manager'];
+  if (!allowedRoles.includes(req.user.role)) {
+    return res.status(403).json({ success: false, error: 'Not authorized to create users' });
   }
 
   const { name, email, password, role, department } = req.body;
+
+  if (['manager', 'department_manager'].includes(req.user.role) && ['admin', 'ceo'].includes(role)) {
+    return res.status(403).json({ success: false, error: 'Managers cannot create users with admin or ceo roles' });
+  }
 
   if (!name || !email || !password) {
     return res.status(400).json({ success: false, error: 'Name, email, and password are required', message: 'Name, email, and password are required' });
@@ -131,8 +136,25 @@ exports.getUser = asyncHandler(async (req, res, next) => {
 
 // Update user by admin
 exports.updateUser = asyncHandler(async (req, res, next) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({ success: false, error: 'Only admins can edit users' });
+  const allowedRoles = ['admin', 'ceo', 'manager', 'department_manager'];
+  if (!allowedRoles.includes(req.user.role)) {
+    return res.status(403).json({ success: false, error: 'Only admins, CEOs, or managers can edit users' });
+  }
+
+  const user = await User.findByPk(req.params.id);
+
+  if (!user) {
+    return res.status(404).json({ success: false, message: 'User not found' });
+  }
+
+  // Restrict managers from editing admins/ceos or assigning admin/ceo roles
+  if (['manager', 'department_manager'].includes(req.user.role)) {
+    if (['admin', 'ceo'].includes(user.role)) {
+      return res.status(403).json({ success: false, error: 'Managers cannot edit admin or ceo users' });
+    }
+    if (req.body.role && ['admin', 'ceo'].includes(req.body.role)) {
+      return res.status(403).json({ success: false, error: 'Managers cannot assign admin or ceo roles' });
+    }
   }
 
   const fieldsToUpdate = {
@@ -147,12 +169,6 @@ exports.updateUser = asyncHandler(async (req, res, next) => {
   Object.keys(fieldsToUpdate).forEach(key => {
     if (fieldsToUpdate[key] === undefined) delete fieldsToUpdate[key];
   });
-
-  const user = await User.findByPk(req.params.id);
-
-  if (!user) {
-    return res.status(404).json({ success: false, message: 'User not found' });
-  }
 
   if (req.body.password && req.body.password.trim().length >= 6) {
     user.password = req.body.password;
