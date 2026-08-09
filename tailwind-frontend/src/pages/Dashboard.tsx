@@ -43,7 +43,7 @@ import type { RootState } from '../app/store';
 import { cn } from '../lib/utils';
 
 // Helper to fetch with an enforced timeout
-const fetchWithTimeout = (url: string, options: any, timeoutMs = 8000) => {
+const fetchWithTimeout = (url: string, options: any, timeoutMs = 18000) => {
   return Promise.race([
     fetch(url, options),
     new Promise<Response>((_, reject) =>
@@ -80,7 +80,7 @@ export default function Dashboard() {
     if (currentUser?.role === 'admin') {
       const fetchJson = (url: string) => {
         console.log(`[Diagnostic] Fetching: ${url}`);
-        return fetchWithTimeout(url, { headers: { Authorization: token ? `Bearer ${token}` : '' } }, 8000)
+        return fetchWithTimeout(url, { headers: { Authorization: token ? `Bearer ${token}` : '' } }, 18000)
           .then(r => {
             console.log(`[Diagnostic] Status received for ${url}: ${r.status}`);
             return r.ok ? r.json() : null;
@@ -119,7 +119,7 @@ export default function Dashboard() {
       // Normal user / manager dashboard
       const fetchJsonSafe = (url: string, fallback: any) => {
         console.log(`[Diagnostic] Fetching non-admin: ${url}`);
-        return fetchWithTimeout(url, { headers: { Authorization: token ? `Bearer ${token}` : '' } }, 8000)
+        return fetchWithTimeout(url, { headers: { Authorization: token ? `Bearer ${token}` : '' } }, 18000)
           .then(r => {
             console.log(`[Diagnostic] Status received for non-admin ${url}: ${r.status}`);
             return r.ok ? r.json() : fallback;

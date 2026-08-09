@@ -67,7 +67,7 @@ export default function UserManagement() {
     setTimeout(() => { setSuccessMessage(''); setErrorMessage(''); }, 4000);
   };
 
-  const fetchWithTimeout = (url: string, options: any, timeoutMs = 8000) => {
+  const fetchWithTimeout = (url: string, options: any, timeoutMs = 18000) => {
     return Promise.race([
       fetch(url, options),
       new Promise<Response>((_, reject) =>
@@ -78,7 +78,7 @@ export default function UserManagement() {
 
   const fetchUsers = () => {
     setLoading(true);
-    fetchWithTimeout(`${base}/users`, { headers: { Authorization: `Bearer ${token}` } }, 8000)
+    fetchWithTimeout(`${base}/users`, { headers: { Authorization: `Bearer ${token}` } }, 18000)
       .then(r => r.ok ? r.json() : Promise.reject(new Error('Fetch failed')))
       .then(d => setUsers(d.data || d.users || []))
       .catch((err) => {
@@ -89,7 +89,7 @@ export default function UserManagement() {
   };
 
   const fetchDepartments = () => {
-    fetchWithTimeout(`${base}/departments`, { headers: { Authorization: `Bearer ${token}` } }, 8000)
+    fetchWithTimeout(`${base}/departments`, { headers: { Authorization: `Bearer ${token}` } }, 18000)
       .then(r => r.ok ? r.json() : Promise.reject(new Error('Fetch failed')))
       .then(d => setDepartments(d.data || []))
       .catch((err) => console.error('Failed to fetch departments:', err));
