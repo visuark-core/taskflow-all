@@ -1,6 +1,5 @@
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import axios from "axios";
-import { supabase } from "../../lib/supabase";
 
 const getBaseApiUrl = () => {
   const url = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -110,17 +109,7 @@ export const registerUser = createAsyncThunk<
   { rejectValue: string }
 >("auth/registerUser", async (body, { rejectWithValue }) => {
   try {
-    // 1. Attempt to sign up with Supabase first
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: body.email,
-      password: body.password,
-    });
-
-    if (authError) {
-      console.warn("Supabase signup failed or bypassed:", authError.message);
-    }
-
-    // 2. Call local backend to register/save profile
+    // Call local backend to register/save profile
     const res = await axios.post<RegisterResponse>(
       `${getBaseApiUrl()}/auth/register`,
       body,
@@ -129,15 +118,6 @@ export const registerUser = createAsyncThunk<
       }
     );
 
-    // If Supabase was successful, use Supabase JWT token
-    if (!authError && authData.session?.access_token) {
-      return {
-        user: normalizeUser(res.data.user),
-        token: authData.session.access_token,
-      };
-    }
-
-    // Fallback to local token
     return {
       ...res.data,
       user: normalizeUser(res.data.user),
@@ -159,46 +139,17 @@ export const loginUser = createAsyncThunk<
   { rejectValue: string }
 >("auth/loginUser", async (credentials, { rejectWithValue }) => {
   try {
-    // 1. Attempt to authenticate with Supabase first
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email: credentials.email,
-      password: credentials.password,
-    });
-
-    if (authError) {
-      // Fallback to local database authentication
-      console.warn("Supabase auth failed, falling back to local auth:", authError.message);
-      const res = await axios.post<LoginResponse>(
-        `${getBaseApiUrl()}/auth/login`,
-        credentials,
-        {
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-      return {
-        ...res.data,
-        user: normalizeUser(res.data.user),
-      };
-    }
-
-    // 2. Fetch the corresponding user profile from local backend using Supabase JWT
-    const token = authData.session?.access_token;
-    if (!token) {
-      return rejectWithValue("Failed to retrieve session token from Supabase.");
-    }
-
-    const res = await axios.get<{ success: boolean; data: any }>(
-      `${getBaseApiUrl()}/auth/me`,
+    // Authenticate with local database backend
+    const res = await axios.post<LoginResponse>(
+      `${getBaseApiUrl()}/auth/login`,
+      credentials,
       {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json" },
       }
     );
-
     return {
-      user: normalizeUser(res.data.data),
-      token,
+      ...res.data,
+      user: normalizeUser(res.data.user),
     };
   } catch (error: unknown) {
     if (axios.isAxiosError(error)) {

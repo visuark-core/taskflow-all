@@ -1,4 +1,4 @@
-// server.js - persistent server entrypoint (uses app.js)
+// server.js - persistent server entrypoint (uses app.js) - Postgres backend
 const http = require('http');
 const socketio = require('socket.io');
 const dotenv = require('dotenv');
