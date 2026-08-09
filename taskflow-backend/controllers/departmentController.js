@@ -70,6 +70,9 @@ exports.createDepartment = asyncHandler(async (req, res, next) => {
   if (managerId) {
     managerUser = await User.findByPk(managerId);
     if (!managerUser) return next(new ErrorResponse('Manager not found', 404));
+    if (managerUser.role === 'admin' || managerUser.role === 'ceo') {
+      return next(new ErrorResponse('Admins and CEOs cannot be assigned as department managers', 400));
+    }
   }
 
   const department = await Department.create({
@@ -114,6 +117,9 @@ exports.updateDepartment = asyncHandler(async (req, res, next) => {
     if (req.body.manager) {
       const newManager = await User.findByPk(req.body.manager);
       if (!newManager) return next(new ErrorResponse('New manager not found', 404));
+      if (newManager.role === 'admin' || newManager.role === 'ceo') {
+        return next(new ErrorResponse('Admins and CEOs cannot be assigned as department managers', 400));
+      }
 
       if (department.managerId) {
         await User.update({ role: 'user', managedDepartmentId: null }, { where: { id: department.managerId } });

@@ -8,6 +8,7 @@ interface User {
   id: number;
   name: string;
   email: string;
+  role?: string;
 }
 
 interface Department {
@@ -316,7 +317,7 @@ export default function Departments() {
                   className="input"
                 >
                   <option value="">Select a Manager (Optional)</option>
-                  {users.map((user) => (
+                  {users.filter(u => u.role !== 'admin' && u.role !== 'ceo').map((user) => (
                     <option key={user.id} value={user.id}>
                       {user.name} ({user.email})
                     </option>
@@ -408,7 +409,7 @@ export default function Departments() {
                   className="input"
                 >
                   <option value="">Select a Manager (Optional)</option>
-                  {users.map((user) => (
+                  {users.filter(u => u.role !== 'admin' && u.role !== 'ceo').map((user) => (
                     <option key={user.id} value={user.id}>
                       {user.name} ({user.email})
                     </option>
