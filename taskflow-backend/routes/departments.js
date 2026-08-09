@@ -33,8 +33,8 @@ router.get('/:id', getDepartment);
 // Update department (admin or department manager)
 router.put('/:id', updateDepartment);
 
-// Delete department (admin and executives)
-router.delete('/:id', authorize('admin', 'ceo', 'cfo', 'cto', 'cmo'), deleteDepartment);
+// Delete department (admin, executives, and managers)
+router.delete('/:id', authorize('admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'), deleteDepartment);
 
 // Add member to department
 router.post('/:id/members', addMember);

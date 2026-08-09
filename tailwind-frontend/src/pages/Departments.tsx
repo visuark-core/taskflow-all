@@ -182,7 +182,7 @@ export default function Departments() {
           <Building2 className="text-primary-600 dark:text-primary-400" /> 
           Departments
         </h1>
-        {['admin', 'ceo', 'cfo', 'cto', 'cmo'].includes(currentUser?.role || '') && (
+        {['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'].includes(currentUser?.role || '') && (
           <button
             onClick={() => setIsModalOpen(true)}
             className="btn btn-primary flex items-center gap-1"
@@ -209,7 +209,7 @@ export default function Departments() {
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-xl font-bold text-gray-900 dark:text-white">{dept.name}</h3>
                   <div className="flex items-center gap-1">
-                    {(['admin', 'ceo', 'cfo', 'cto', 'cmo'].includes(currentUser?.role || '') || dept.departmentManager?.id === currentUser?.id) && (
+                    {(['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'].includes(currentUser?.role || '') || dept.departmentManager?.id === currentUser?.id) && (
                       <button
                         onClick={() => handleOpenEditModal(dept)}
                         className="p-1.5 text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-50 dark:hover:bg-gray-800 rounded transition-colors"
@@ -218,7 +218,7 @@ export default function Departments() {
                         <Pencil size={16} />
                       </button>
                     )}
-                    {['admin', 'ceo', 'cfo', 'cto', 'cmo'].includes(currentUser?.role || '') && (
+                    {['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'].includes(currentUser?.role || '') && (
                       <button
                         onClick={() => handleDelete(dept.id, dept.name)}
                         className="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-800 rounded transition-colors"

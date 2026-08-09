@@ -157,12 +157,12 @@ async function runTests() {
       console.error('❌ Manager role NOT updated:', loginManagerRes);
     }
 
-    // Non-admin attempting to create a department
+    // Regular user attempting to create a department (should fail)
     const createDeptFailedRes = await apiRequest(port, 'POST', '/api/departments', {
       name: `FailingDept_${rand}`,
       description: 'Should fail',
       budget: 10000
-    }, managerToken);
+    }, userToken);
     if (createDeptFailedRes.status === 403) {
       console.log('✅ Prevented non-admin from creating department (Expected 403)');
     } else {
