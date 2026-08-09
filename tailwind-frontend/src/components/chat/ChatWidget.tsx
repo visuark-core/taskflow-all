@@ -70,9 +70,15 @@ export default function ChatWidget({ isOpen, onClose, onUnreadChange }: ChatWidg
         onUnreadChange(totalUnread);
     }, [totalUnread]);
 
-    // Connect to Socket.io
+    // Connect to Socket.io (skipped in serverless environments like Vercel since they do not support persistent WebSockets)
     useEffect(() => {
         if (!currentUser || !token) return;
+
+        const isServerless = API_URL.includes('vercel.app') || API_URL.includes('netlify.app');
+        if (isServerless) {
+            console.log('Socket.io connection disabled in serverless deployment.');
+            return;
+        }
 
         if (!socketRef.current) {
             socketRef.current = io(API_URL);
