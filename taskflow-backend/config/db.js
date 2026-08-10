@@ -9,7 +9,7 @@ let port = process.env.DB_PORT || "5432";
 let dbUser = process.env.DB_USER;
 
 // Automatically map IPv6 direct connection to the IPv4 pooler for this Supabase project
-if (connectionUri) {
+if (connectionUri && !process.env.SYNC_DIRECT) {
   const supabaseUriMatch = connectionUri.match(/@db\.([a-z0-9]+)\.supabase\.co/i);
   if (supabaseUriMatch) {
     const projectRef = supabaseUriMatch[1];
@@ -33,7 +33,7 @@ if (connectionUri) {
   }
 }
 
-if (host) {
+if (host && !process.env.SYNC_DIRECT) {
   const supabaseMatch = host.match(/^db\.([a-z0-9]+)\.supabase\.co$/i);
   if (supabaseMatch) {
     const projectRef = supabaseMatch[1];

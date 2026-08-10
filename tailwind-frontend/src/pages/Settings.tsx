@@ -8,7 +8,7 @@ import { updateUser } from "../features/auth/authSlice";
 export default function Settings() {
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
-  const token = useAppSelector((state) => state.auth.token);
+  const token = localStorage.getItem("token") || useAppSelector((state) => state.auth.token);
 
   const [activeTab, setActiveTab] = useState("profile");
   const [loading, setLoading] = useState(false);
