@@ -10,6 +10,12 @@ interface User {
   department: string;
   avatar?: string;
   password?: string;
+  bankDetails?: {
+    bankName?: string;
+    accountNumber?: string;
+    routingNumber?: string;
+    accountHolderName?: string;
+  };
 }
 
 const ROLES = ['user', 'admin', 'ceo', 'coo', 'cfo', 'cto', 'cmo', 'chief_manager', 'department_manager', 'developer', 'designer', 'tester'];
@@ -272,6 +278,9 @@ export default function UserManagement() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">Name</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">Role</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">Department</th>
+                  {currentUser?.role === 'admin' && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">Bank Details</th>
+                  )}
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">Password (Hash)</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">Actions</th>
                 </tr>
@@ -315,6 +324,20 @@ export default function UserManagement() {
                         {user.department || 'Unassigned'}
                       </div>
                     </td>
+                    {currentUser?.role === 'admin' && (
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {user.bankDetails ? (
+                          <div className="text-xs text-gray-700 dark:text-gray-300">
+                            <div><span className="font-semibold">Bank:</span> {user.bankDetails.bankName || 'N/A'}</div>
+                            <div><span className="font-semibold">Acc:</span> {user.bankDetails.accountNumber || 'N/A'}</div>
+                            <div><span className="font-semibold">Routing:</span> {user.bankDetails.routingNumber || 'N/A'}</div>
+                            <div><span className="font-semibold">Holder:</span> {user.bankDetails.accountHolderName || 'N/A'}</div>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-400 italic">Not set</span>
+                        )}
+                      </td>
+                    )}
                     {/* Password */}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">

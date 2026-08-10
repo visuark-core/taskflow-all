@@ -5,12 +5,17 @@ const { Op } = require('sequelize');
 
 // Get all users
 exports.getUsers = asyncHandler(async (req, res, next) => {
+  const attributes = ['id', 'name', 'email', 'avatar', 'role', 'department'];
+  if (req.user.role === 'admin') {
+    attributes.push('bankDetails');
+  }
+
   const users = await User.findAll({
     where: { 
       isActive: true,
       company: req.user.company
     },
-    attributes: ['id', 'name', 'email', 'avatar', 'role', 'department'],
+    attributes,
     include: [{ model: Team, attributes: ['id', 'name'] }],
     order: [['name', 'ASC']]
   });
@@ -119,8 +124,13 @@ exports.createUser = asyncHandler(async (req, res, next) => {
 
 // Get single user
 exports.getUser = asyncHandler(async (req, res, next) => {
+  const excludeAttributes = ['password'];
+  if (req.user.role !== 'admin' && req.user.id !== parseInt(req.params.id)) {
+    excludeAttributes.push('bankDetails');
+  }
+
   const user = await User.findByPk(req.params.id, {
-    attributes: { exclude: ['password'] },
+    attributes: { exclude: excludeAttributes },
     include: [{ model: Team, attributes: ['id', 'name', 'description'] }]
   });
 
@@ -238,6 +248,7 @@ exports.updateCurrentUser = asyncHandler(async (req, res, next) => {
     department: req.body.department,
     company: req.body.company,
     bio: req.body.bio,
+    bankDetails: req.body.bankDetails,
   };
 
   Object.keys(fieldsToUpdate).forEach(key => {

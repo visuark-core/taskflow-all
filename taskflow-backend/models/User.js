@@ -74,6 +74,10 @@ const User = sequelize.define(
     bio: {
       type: DataTypes.TEXT,
     },
+    bankDetails: {
+      type: DataTypes.JSON,
+      defaultValue: null,
+    },
   },
   {
     hooks: {

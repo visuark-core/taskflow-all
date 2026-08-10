@@ -19,6 +19,10 @@ export default function Settings() {
     role: "",
     department: "",
     bio: "",
+    bankName: "",
+    accountNumber: "",
+    routingNumber: "",
+    accountHolderName: "",
   });
 
   useEffect(() => {
@@ -30,6 +34,10 @@ export default function Settings() {
         role: user.role || "",
         department: user.department || "",
         bio: user.bio || "",
+        bankName: user.bankDetails?.bankName || "",
+        accountNumber: user.bankDetails?.accountNumber || "",
+        routingNumber: user.bankDetails?.routingNumber || "",
+        accountHolderName: user.bankDetails?.accountHolderName || "",
       });
     }
   }, [user]);
@@ -58,6 +66,12 @@ export default function Settings() {
           role: formData.role,
           department: formData.department,
           bio: formData.bio,
+          bankDetails: {
+            bankName: formData.bankName,
+            accountNumber: formData.accountNumber,
+            routingNumber: formData.routingNumber,
+            accountHolderName: formData.accountHolderName,
+          },
         },
         {
           headers: {
@@ -67,7 +81,7 @@ export default function Settings() {
         }
       );
 
-      alert("Profile updated successfully.");
+      alert("Settings updated successfully.");
       dispatch(updateUser(res.data.user));
       localStorage.setItem("user", JSON.stringify(res.data.user));
     } catch (error: any) {
@@ -91,6 +105,10 @@ export default function Settings() {
         role: user.role || "",
         department: user.department || "",
         bio: user.bio || "",
+        bankName: user.bankDetails?.bankName || "",
+        accountNumber: user.bankDetails?.accountNumber || "",
+        routingNumber: user.bankDetails?.routingNumber || "",
+        accountHolderName: user.bankDetails?.accountHolderName || "",
       });
     }
   };
@@ -254,6 +272,96 @@ export default function Settings() {
                       >
                         <Check size={16} />
                         {loading ? "Saving..." : "Save"}
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
+            </div>
+          )}
+          {activeTab === "account" && (
+            <div className="card">
+              <div className="border-b border-gray-200 px-5 py-4 dark:border-gray-700">
+                <h3 className="font-medium">Account & Bank Details</h3>
+              </div>
+              <div className="p-5">
+                {!user ? (
+                  <p>Please log in to see your account info.</p>
+                ) : (
+                  <form className="space-y-5" onSubmit={handleSubmit}>
+                    <div className="space-y-2">
+                      <label htmlFor="bankName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Bank Name
+                      </label>
+                      <input
+                        type="text"
+                        id="bankName"
+                        value={formData.bankName}
+                        onChange={handleChange}
+                        className="input"
+                        placeholder="e.g. Chase Bank"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="accountNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Account Number
+                      </label>
+                      <input
+                        type="text"
+                        id="accountNumber"
+                        value={formData.accountNumber}
+                        onChange={handleChange}
+                        className="input"
+                        placeholder="e.g. 1234567890"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="routingNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Routing Number / IFSC Code
+                      </label>
+                      <input
+                        type="text"
+                        id="routingNumber"
+                        value={formData.routingNumber}
+                        onChange={handleChange}
+                        className="input"
+                        placeholder="e.g. 987654321"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="accountHolderName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Account Holder Name
+                      </label>
+                      <input
+                        type="text"
+                        id="accountHolderName"
+                        value={formData.accountHolderName}
+                        onChange={handleChange}
+                        className="input"
+                        placeholder="e.g. John Doe"
+                      />
+                    </div>
+
+                    <div className="flex justify-end space-x-3 pt-4">
+                      <button
+                        type="button"
+                        onClick={resetForm}
+                        className="btn btn-outline gap-1.5"
+                      >
+                        <X size={16} />
+                        Cancel
+                      </button>
+
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="btn btn-primary gap-1.5"
+                      >
+                        <Check size={16} />
+                        {loading ? "Saving..." : "Save Details"}
                       </button>
                     </div>
                   </form>
