@@ -58,7 +58,7 @@ export default function KanbanBoard() {
 
     // If selectedProject is empty string -> fetch tasks for ALL projects
     if (selectedProject === '') {
-      const isManagerOrAdmin = ['admin', 'manager', 'ceo', 'cfo', 'cmo', 'cto'].includes(currentUser?.role || '');
+      const isManagerOrAdmin = ['admin', 'chief_manager', 'ceo', 'cfo', 'cmo', 'cto'].includes(currentUser?.role || '');
       if (isManagerOrAdmin) {
         setTasksByStatus(groupedEmpty);
         setLoading(false);
@@ -141,7 +141,7 @@ export default function KanbanBoard() {
             </button>
           </div>
 
-          {['admin', 'manager', 'ceo', 'cfo', 'cmo', 'cto'].includes(currentUser?.role || '') && (
+          {['admin', 'chief_manager', 'ceo', 'cfo', 'cmo', 'cto'].includes(currentUser?.role || '') && (
             <div className="w-64">
               <label className="sr-only">Project</label>
               <select value={selectedProject} onChange={(e) => setSelectedProject(e.target.value)} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800">
@@ -153,15 +153,17 @@ export default function KanbanBoard() {
             </div>
           )}
 
-          <button className="btn btn-primary">
-            <Plus className="mr-1 h-4 w-4" />
-            Add Task
-          </button>
+          {currentUser && ['admin', 'ceo', 'chief_manager', 'department_manager'].includes(currentUser.role || '') && (
+            <button className="btn btn-primary">
+              <Plus className="mr-1 h-4 w-4" />
+              Add Task
+            </button>
+          )}
         </div>
       </div>
 
       {/* Kanban Board */}
-      {selectedProject === '' && ['admin', 'manager', 'ceo', 'cfo', 'cmo', 'cto'].includes(currentUser?.role || '') ? (
+      {selectedProject === '' && ['admin', 'chief_manager', 'ceo', 'cfo', 'cmo', 'cto'].includes(currentUser?.role || '') ? (
         <div className="flex h-[calc(100vh-12rem)] items-center justify-center rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700">
           <div className="text-center">
             <h3 className="mt-2 text-lg font-semibold text-gray-900 dark:text-white">No Project Selected</h3>

@@ -221,7 +221,7 @@ export default function TaskDetail() {
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold">{task.title}</h1>
             <Badge>{task.status}</Badge>
-            {['admin', 'manager', 'ceo', 'cfo', 'cmo', 'cto'].includes(currentUser?.role || '') && (
+            {['admin', 'chief_manager', 'ceo', 'cfo', 'cmo', 'cto'].includes(currentUser?.role || '') && (
               <div className="flex items-center gap-1 ml-2">
                 <button
                   onClick={() => setIsEditModalOpen(true)}

@@ -84,13 +84,15 @@ export default function Navbar({ children }: NavbarProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setIsNewTaskModalOpen(true)}
-            className="hidden items-center gap-1 rounded-md bg-primary-500 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-primary-600 sm:flex"
-          >
-            <Plus className="h-4 w-4" />
-            <span>New Task</span>
-          </button>
+          {user && ['admin', 'ceo', 'chief_manager', 'department_manager'].includes(user.role || '') && (
+            <button
+              onClick={() => setIsNewTaskModalOpen(true)}
+              className="hidden items-center gap-1 rounded-md bg-primary-500 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-primary-600 sm:flex"
+            >
+              <Plus className="h-4 w-4" />
+              <span>New Task</span>
+            </button>
+          )}
 
           <div className="relative">
             <button

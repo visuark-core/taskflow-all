@@ -71,7 +71,7 @@ export default function Dashboard() {
   const token = localStorage.getItem('token');
   const base = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
   const currentUser = useSelector((state: RootState) => state.auth.user);
-  const isManager = ['manager', 'department_manager'].includes(currentUser?.role || '');
+  const isManager = ['chief_manager', 'department_manager'].includes(currentUser?.role || '');
 
   useEffect(() => {
     setLoading(true);
@@ -383,12 +383,14 @@ export default function Dashboard() {
           >
             Export PDF Report
           </button>
-          <button 
-            onClick={() => setIsNewProjectModalOpen(true)}
-            className="btn btn-primary bg-gradient-to-r from-primary-600 to-indigo-600 hover:from-primary-700 hover:to-indigo-700 border-none flex items-center gap-2 shadow-md px-4 py-2 text-xs font-semibold rounded-lg text-white"
-          >
-            <Plus size={14} /> Create New Project
-          </button>
+          {currentUser && ['admin', 'ceo', 'chief_manager', 'department_manager'].includes(currentUser.role || '') && (
+            <button 
+              onClick={() => setIsNewProjectModalOpen(true)}
+              className="btn btn-primary bg-gradient-to-r from-primary-600 to-indigo-600 hover:from-primary-700 hover:to-indigo-700 border-none flex items-center gap-2 shadow-md px-4 py-2 text-xs font-semibold rounded-lg text-white"
+            >
+              <Plus size={14} /> Create New Project
+            </button>
+          )}
         </div>
       </div>
 

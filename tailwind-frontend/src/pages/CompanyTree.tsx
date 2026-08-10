@@ -83,7 +83,7 @@ export default function CompanyTree() {
     if (['admin', 'ceo', 'cto', 'cfo', 'cmo', 'coo'].includes(r)) {
       return 'bg-gradient-to-r from-amber-500 to-yellow-600 text-white border-none shadow-sm';
     }
-    if (['manager', 'department_manager'].includes(r)) {
+    if (['chief_manager', 'department_manager'].includes(r)) {
       return 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white border-none shadow-sm';
     }
     if (r === 'developer') {
@@ -97,6 +97,7 @@ export default function CompanyTree() {
 
   const formatRole = (role: string) => {
     const r = role?.toLowerCase() || '';
+    if (r === 'chief_manager') return 'Chief Manager';
     if (r === 'department_manager') return 'Department Manager';
     if (r === 'ceo') return 'Chief Executive Officer (CEO)';
     if (r === 'cto') return 'Chief Technology Officer (CTO)';
@@ -129,11 +130,11 @@ export default function CompanyTree() {
 
     // Group department users by position rank
     const managers = deptUsers.filter((u: any) => 
-      ['manager', 'department_manager'].includes(u.role?.toLowerCase() || '')
+      ['chief_manager', 'department_manager'].includes(u.role?.toLowerCase() || '')
     );
 
     const members = deptUsers.filter((u: any) => 
-      !['manager', 'department_manager'].includes(u.role?.toLowerCase() || '')
+      !['chief_manager', 'department_manager'].includes(u.role?.toLowerCase() || '')
     );
 
     return { managers, members };

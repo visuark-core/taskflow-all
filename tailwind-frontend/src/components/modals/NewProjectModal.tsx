@@ -69,7 +69,7 @@ export default function NewProjectModal({ isOpen, onClose, onCreated }: NewProje
       .then(res => {
         const users = res.data.data || res.data.users || [];
         const managerUsers = users.filter((u: any) => 
-          ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'].includes(u.role)
+          ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'chief_manager', 'department_manager'].includes(u.role)
         );
         setManagers(managerUsers);
       })

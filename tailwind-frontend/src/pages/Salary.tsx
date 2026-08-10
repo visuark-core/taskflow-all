@@ -64,7 +64,7 @@ export default function Salary() {
   const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().slice(0, 7)); // e.g. "2026-08"
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-  const isAdminOrManager = currentUser && ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'].includes(currentUser.role);
+  const isAdminOrManager = currentUser && ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'chief_manager', 'department_manager'].includes(currentUser.role);
 
   // Modals
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -259,7 +259,7 @@ export default function Salary() {
 
   const isFinanceAuthorized = currentUser && (
     ['admin', 'ceo', 'cfo'].includes(currentUser.role) ||
-    (['manager', 'department_manager'].includes(currentUser.role) && currentUser.department?.toLowerCase() === 'finance')
+    (['chief_manager', 'department_manager'].includes(currentUser.role) && currentUser.department?.toLowerCase() === 'finance')
   );
 
   if (!isFinanceAuthorized) {

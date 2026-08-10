@@ -19,13 +19,13 @@ const router = express.Router();
 router.use(protect);
 
 // Get all departments (admin and executives)
-router.get('/', authorize('admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'), getDepartments);
+router.get('/', authorize('admin', 'ceo', 'cfo', 'cto', 'cmo', 'chief_manager', 'department_manager'), getDepartments);
 
 // Get current user's managed departments
 router.get('/my-departments/list', getMyDepartments);
 
-// Create department (admin, executives, and managers)
-router.post('/', authorize('admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'), createDepartment);
+// Create department (admin, ceo, and chief_manager)
+router.post('/', authorize('admin', 'ceo', 'chief_manager'), createDepartment);
 
 // Get single department
 router.get('/:id', getDepartment);
@@ -33,8 +33,8 @@ router.get('/:id', getDepartment);
 // Update department (admin or department manager)
 router.put('/:id', updateDepartment);
 
-// Delete department (admin, executives, and managers)
-router.delete('/:id', authorize('admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'), deleteDepartment);
+// Delete department (admin, ceo, and chief_manager)
+router.delete('/:id', authorize('admin', 'ceo', 'chief_manager'), deleteDepartment);
 
 // Add member to department
 router.post('/:id/members', addMember);

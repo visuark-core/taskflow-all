@@ -55,7 +55,7 @@ exports.getClient = asyncHandler(async (req, res, next) => {
 // @route   POST /api/clients
 // @access  Private (Admin/Manager/Executive)
 exports.createClient = asyncHandler(async (req, res, next) => {
-  const authorizedRoles = ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'];
+  const authorizedRoles = ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'chief_manager', 'department_manager'];
   if (!authorizedRoles.includes(req.user.role)) {
     return next(new ErrorResponse('Not authorized to create clients', 403));
   }
@@ -72,7 +72,7 @@ exports.createClient = asyncHandler(async (req, res, next) => {
 // @route   PUT /api/clients/:id
 // @access  Private (Admin/Manager/Executive)
 exports.updateClient = asyncHandler(async (req, res, next) => {
-  const authorizedRoles = ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'];
+  const authorizedRoles = ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'chief_manager', 'department_manager'];
   if (!authorizedRoles.includes(req.user.role)) {
     return next(new ErrorResponse('Not authorized to update clients', 403));
   }
@@ -95,7 +95,7 @@ exports.updateClient = asyncHandler(async (req, res, next) => {
 // @route   DELETE /api/clients/:id
 // @access  Private (Admin/Manager/Executive)
 exports.deleteClient = asyncHandler(async (req, res, next) => {
-  const authorizedRoles = ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'];
+  const authorizedRoles = ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'chief_manager', 'department_manager'];
   if (!authorizedRoles.includes(req.user.role)) {
     return next(new ErrorResponse('Not authorized to delete clients', 403));
   }

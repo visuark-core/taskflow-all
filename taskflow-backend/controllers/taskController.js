@@ -92,6 +92,11 @@ exports.getTask = asyncHandler(async (req, res, next) => {
 });
 
 exports.createTask = asyncHandler(async (req, res, next) => {
+  const allowedRoles = ['admin', 'ceo', 'chief_manager', 'department_manager'];
+  if (!allowedRoles.includes(req.user.role)) {
+    return next(new ErrorResponse('Not authorized to create tasks', 403));
+  }
+
   req.body.assignedById = req.user.id;
   
   if (req.body.project) {
@@ -133,7 +138,7 @@ exports.updateTask = asyncHandler(async (req, res, next) => {
   if (!task) return next(new ErrorResponse('Task not found', 404));
 
   // If user is just the assignee (not admin/manager and not the creator), they can only update status/checklist
-  const isManagerOrAdmin = ['admin', 'manager', 'ceo', 'cfo', 'cmo', 'cto'].includes(req.user.role);
+  const isManagerOrAdmin = ['admin', 'chief_manager', 'ceo', 'cfo', 'cmo', 'cto'].includes(req.user.role);
   const isAssigneeOnly = !isManagerOrAdmin && task.assignedById !== req.user.id && task.assigneeId === req.user.id;
   if (isAssigneeOnly) {
     const allowedKeys = ['checklist', 'status'];
@@ -178,7 +183,7 @@ exports.deleteTask = asyncHandler(async (req, res, next) => {
   const task = await Task.findByPk(req.params.id);
   if (!task) return next(new ErrorResponse('Task not found', 404));
 
-  const isManagerOrAdmin = ['admin', 'manager', 'ceo', 'cfo', 'cmo', 'cto'].includes(req.user.role);
+  const isManagerOrAdmin = ['admin', 'chief_manager', 'ceo', 'cfo', 'cmo', 'cto'].includes(req.user.role);
   if (!isManagerOrAdmin && task.assignedById !== req.user.id) {
     return next(new ErrorResponse('Not authorized to delete this task', 403));
   }
@@ -206,7 +211,7 @@ exports.reorderTasks = asyncHandler(async (req, res, next) => {
   const task = await Task.findByPk(taskId);
   if (!task) return next(new ErrorResponse('Task not found', 404));
 
-  const isManagerOrAdmin = ['admin', 'manager', 'ceo', 'cfo', 'cmo', 'cto'].includes(req.user.role);
+  const isManagerOrAdmin = ['admin', 'chief_manager', 'ceo', 'cfo', 'cmo', 'cto'].includes(req.user.role);
   const isAssigneeOnly = !isManagerOrAdmin && task.assignedById !== req.user.id && task.assigneeId === req.user.id;
 
   if (isAssigneeOnly && newStatus && newStatus.toLowerCase() === 'done') {

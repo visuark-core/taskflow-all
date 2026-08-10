@@ -5,9 +5,9 @@ const sequelize = require('./config/db');
 async function test() {
   await sequelize.authenticate();
   
-  // Find a manager user
-  const users = await User.findAll({ where: { role: 'manager' } });
-  if (users.length === 0) { console.log('No managers found'); process.exit(); }
+  // Find a chief manager user
+  const users = await User.findAll({ where: { role: 'chief_manager' } });
+  if (users.length === 0) { console.log('No chief managers found'); process.exit(); }
   const manager = users[0];
   
   // Find a team

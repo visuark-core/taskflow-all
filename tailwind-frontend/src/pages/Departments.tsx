@@ -167,7 +167,7 @@ export default function Departments() {
     }
   };
 
-  if (!currentUser || !['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'].includes(currentUser.role)) {
+  if (!currentUser || !['admin', 'ceo', 'cfo', 'cto', 'cmo', 'chief_manager', 'department_manager'].includes(currentUser.role)) {
     return (
       <div className="py-12 text-center">
         <h2 className="text-2xl font-bold text-red-600">Access Denied</h2>
@@ -183,13 +183,13 @@ export default function Departments() {
           <Building2 className="text-primary-600 dark:text-primary-400" /> 
           Departments
         </h1>
-        {['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'].includes(currentUser?.role || '') && (
-          <button
+        {['admin', 'ceo', 'chief_manager'].includes(currentUser?.role || '') && (
+          <button 
+            className="btn btn-primary bg-gradient-to-r from-primary-600 to-indigo-600 hover:from-primary-700 hover:to-indigo-700 border-none flex items-center gap-2 shadow-md rounded-lg text-white"
             onClick={() => setIsModalOpen(true)}
-            className="btn btn-primary flex items-center gap-1"
             aria-label="Create Department"
           >
-            <Plus className="h-4 w-4" />
+            <Plus size={16} />
             Create Department
           </button>
         )}
@@ -210,7 +210,7 @@ export default function Departments() {
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-xl font-bold text-gray-900 dark:text-white">{dept.name}</h3>
                   <div className="flex items-center gap-1">
-                    {(['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'].includes(currentUser?.role || '') || dept.departmentManager?.id === currentUser?.id) && (
+                    {(['admin', 'ceo', 'cfo', 'cto', 'cmo', 'chief_manager', 'department_manager'].includes(currentUser?.role || '') || dept.departmentManager?.id === currentUser?.id) && (
                       <button
                         onClick={() => handleOpenEditModal(dept)}
                         className="p-1.5 text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-50 dark:hover:bg-gray-800 rounded transition-colors"
@@ -219,13 +219,13 @@ export default function Departments() {
                         <Pencil size={16} />
                       </button>
                     )}
-                    {['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'].includes(currentUser?.role || '') && (
+                    {['admin', 'ceo', 'chief_manager'].includes(currentUser?.role || '') && (
                       <button
                         onClick={() => handleDelete(dept.id, dept.name)}
-                        className="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-800 rounded transition-colors"
+                        className="text-gray-500 hover:text-red-600 dark:hover:text-red-400"
                         title="Delete Department"
                       >
-                        <Trash2 size={16} />
+                        <Trash2 className="h-5 w-5" />
                       </button>
                     )}
                   </div>

@@ -204,8 +204,8 @@ export default function Team() {
   let visibleUsers = users;
   if (currentUser?.role === 'admin') {
     // Admins see only department managers
-    visibleUsers = users.filter(u => (u.role === 'department_manager' || u.role === 'manager') && (u._id || u.id) !== (currentUser._id || currentUser.id));
-  } else if (currentUser?.role === 'manager') {
+    visibleUsers = users.filter(u => (u.role === 'department_manager' || u.role === 'chief_manager') && (u._id || u.id) !== (currentUser._id || currentUser.id));
+  } else if (currentUser?.role === 'chief_manager') {
     // Managers see other members of their own department
     const myDept = getDept(currentUser);
     visibleUsers = users.filter(u => getDept(u) === myDept && (u._id || u.id) !== (currentUser._id || currentUser.id));
@@ -388,7 +388,7 @@ export default function Team() {
                   <option value="">Select Role</option>
                   <option value="user">User</option>
                   <option value="admin">Admin</option>
-                  <option value="manager">Manager</option>
+                  <option value="chief_manager">Chief Manager</option>
                   <option value="developer">Developer</option>
                   <option value="designer">Designer</option>
                   <option value="tester">Tester</option>
@@ -513,7 +513,7 @@ export default function Team() {
                   <option value="">Select Role</option>
                   <option value="user">User</option>
                   <option value="admin">Admin</option>
-                  <option value="manager">Manager</option>
+                  <option value="chief_manager">Chief Manager</option>
                   <option value="developer">Developer</option>
                   <option value="designer">Designer</option>
                   <option value="tester">Tester</option>

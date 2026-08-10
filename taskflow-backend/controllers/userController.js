@@ -66,14 +66,14 @@ exports.uploadAvatar = asyncHandler(async (req, res, next) => {
 
 // Create user (admin)
 exports.createUser = asyncHandler(async (req, res, next) => {
-  const allowedRoles = ['admin', 'ceo', 'manager', 'department_manager'];
+  const allowedRoles = ['admin', 'ceo', 'chief_manager', 'department_manager'];
   if (!allowedRoles.includes(req.user.role)) {
     return res.status(403).json({ success: false, error: 'Not authorized to create users' });
   }
 
   const { name, email, password, role, department } = req.body;
 
-  if (['manager', 'department_manager'].includes(req.user.role) && ['admin', 'ceo'].includes(role)) {
+  if (['chief_manager', 'department_manager'].includes(req.user.role) && ['admin', 'ceo'].includes(role)) {
     return res.status(403).json({ success: false, error: 'Managers cannot create users with admin or ceo roles' });
   }
 
@@ -93,7 +93,7 @@ exports.createUser = asyncHandler(async (req, res, next) => {
 
   const newUser = await User.create(payload);
 
-  if (department && (role === 'manager' || role === 'department_manager')) {
+  if (department && (role === 'chief_manager' || role === 'department_manager')) {
     const deptObj = await Department.findOne({ where: { name: department } });
     if (deptObj) {
       if (deptObj.managerId) {
@@ -111,7 +111,7 @@ exports.createUser = asyncHandler(async (req, res, next) => {
       id: newUser.id,
       name: newUser.name,
       email: newUser.email,
-      role: (department && (role === 'manager' || role === 'department_manager')) ? 'department_manager' : newUser.role,
+      role: (department && (role === 'chief_manager' || role === 'department_manager')) ? 'department_manager' : newUser.role,
       department: newUser.department,
     },
   });
@@ -136,7 +136,7 @@ exports.getUser = asyncHandler(async (req, res, next) => {
 
 // Update user by admin
 exports.updateUser = asyncHandler(async (req, res, next) => {
-  const allowedRoles = ['admin', 'ceo', 'manager', 'department_manager'];
+  const allowedRoles = ['admin', 'ceo', 'chief_manager', 'department_manager'];
   if (!allowedRoles.includes(req.user.role)) {
     return res.status(403).json({ success: false, error: 'Only admins, CEOs, or managers can edit users' });
   }
@@ -163,7 +163,7 @@ exports.updateUser = asyncHandler(async (req, res, next) => {
   }
 
   // Restrict managers from editing admins/ceos or assigning admin/ceo roles
-  if (['manager', 'department_manager'].includes(req.user.role)) {
+  if (['chief_manager', 'department_manager'].includes(req.user.role)) {
     if (['admin', 'ceo'].includes(user.role)) {
       return res.status(403).json({ success: false, error: 'Managers cannot edit admin or ceo users' });
     }
@@ -191,7 +191,7 @@ exports.updateUser = asyncHandler(async (req, res, next) => {
 
   await user.update(fieldsToUpdate);
 
-  if (fieldsToUpdate.department && (fieldsToUpdate.role === 'manager' || fieldsToUpdate.role === 'department_manager')) {
+  if (fieldsToUpdate.department && (fieldsToUpdate.role === 'chief_manager' || fieldsToUpdate.role === 'department_manager')) {
     const deptObj = await Department.findOne({ where: { name: fieldsToUpdate.department } });
     if (deptObj) {
       if (deptObj.managerId && deptObj.managerId !== user.id) {

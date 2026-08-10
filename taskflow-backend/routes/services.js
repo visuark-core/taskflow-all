@@ -16,19 +16,19 @@ router.get('/', getServices);
 
 router.post(
   '/',
-  authorize('admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'),
+  authorize('admin', 'ceo', 'cfo', 'cto', 'cmo', 'chief_manager', 'department_manager'),
   createService
 );
 
 router.put(
   '/:id',
-  authorize('admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'),
+  authorize('admin', 'ceo', 'cfo', 'cto', 'cmo', 'chief_manager', 'department_manager'),
   updateService
 );
 
 router.delete(
   '/:id',
-  authorize('admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'),
+  authorize('admin', 'ceo', 'cfo', 'cto', 'cmo', 'chief_manager', 'department_manager'),
   deleteService
 );
 

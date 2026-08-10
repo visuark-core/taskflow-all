@@ -72,7 +72,7 @@ exports.authorizeFinance = (req, res, next) => {
 
   const isFinanceAuthorized = 
     ['admin', 'ceo', 'cfo'].includes(req.user.role) ||
-    (['manager', 'department_manager'].includes(req.user.role) && req.user.department?.toLowerCase() === 'finance');
+    (['chief_manager', 'department_manager'].includes(req.user.role) && req.user.department?.toLowerCase() === 'finance');
 
   if (!isFinanceAuthorized) {
     return next(

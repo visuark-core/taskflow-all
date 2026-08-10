@@ -100,7 +100,7 @@ export default function Billing() {
   const [statusFilter, setStatusFilter] = useState('all');
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-  const isAdminOrManager = currentUser && ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'].includes(currentUser.role);
+  const isAdminOrManager = currentUser && ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'chief_manager', 'department_manager'].includes(currentUser.role);
 
   // Invoices Modals/Forms State
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
@@ -499,7 +499,7 @@ export default function Billing() {
 
   const isFinanceAuthorized = currentUser && (
     ['admin', 'ceo', 'cfo'].includes(currentUser.role) ||
-    (['manager', 'department_manager'].includes(currentUser.role) && currentUser.department?.toLowerCase() === 'finance')
+    (['chief_manager', 'department_manager'].includes(currentUser.role) && currentUser.department?.toLowerCase() === 'finance')
   );
 
   if (!isFinanceAuthorized) {

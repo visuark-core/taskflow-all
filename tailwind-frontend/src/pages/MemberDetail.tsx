@@ -127,7 +127,7 @@ export default function MemberDetail() {
                 <select value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value })} className="mt-1 rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:text-white">
                   <option value="user">User</option>
                   <option value="admin">Admin</option>
-                  <option value="manager">Manager</option>
+                  <option value="chief_manager">Chief Manager</option>
                   <option value="developer">Developer</option>
                   <option value="designer">Designer</option>
                   <option value="tester">Tester</option>

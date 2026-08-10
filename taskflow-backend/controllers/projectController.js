@@ -101,7 +101,7 @@ exports.getProject = asyncHandler(async (req, res, next) => {
 });
 
 exports.createProject = asyncHandler(async (req, res, next) => {
-  const allowedRoles = ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'];
+  const allowedRoles = ['admin', 'ceo', 'chief_manager', 'department_manager'];
   if (!allowedRoles.includes(req.user.role)) {
     return next(new ErrorResponse('Not authorized to create projects', 403));
   }
@@ -214,7 +214,7 @@ exports.deleteProject = asyncHandler(async (req, res, next) => {
 });
 
 exports.addMember = asyncHandler(async (req, res, next) => {
-  const allowedRoles = ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'];
+  const allowedRoles = ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'chief_manager', 'department_manager'];
   if (!allowedRoles.includes(req.user.role)) {
     return next(new ErrorResponse('Only admins, executives, or managers can add members to a project', 403));
   }
@@ -227,7 +227,7 @@ exports.addMember = asyncHandler(async (req, res, next) => {
 });
 
 exports.removeMember = asyncHandler(async (req, res, next) => {
-  const allowedRoles = ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'];
+  const allowedRoles = ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'chief_manager', 'department_manager'];
   if (!allowedRoles.includes(req.user.role)) {
     return next(new ErrorResponse('Only admins, executives, or managers can remove members from a project', 403));
   }

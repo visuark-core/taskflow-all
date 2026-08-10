@@ -12,7 +12,7 @@ interface User {
   password?: string;
 }
 
-const ROLES = ['user', 'admin', 'ceo', 'coo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager', 'developer', 'designer', 'tester'];
+const ROLES = ['user', 'admin', 'ceo', 'coo', 'cfo', 'cto', 'cmo', 'chief_manager', 'department_manager', 'developer', 'designer', 'tester'];
 
 export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
@@ -46,7 +46,7 @@ export default function UserManagement() {
   const currentUser = useSelector((state: any) => state.auth.user);
 
   const filteredRoles = ROLES.filter(r => {
-    if (['manager', 'department_manager'].includes(currentUser?.role || '')) {
+    if (['chief_manager', 'department_manager'].includes(currentUser?.role || '')) {
       return !['admin', 'ceo'].includes(r);
     }
     return true;
@@ -96,7 +96,7 @@ export default function UserManagement() {
   };
 
   useEffect(() => {
-    if (currentUser && ['admin', 'ceo', 'manager', 'department_manager'].includes(currentUser.role)) {
+    if (currentUser && ['admin', 'ceo', 'chief_manager', 'department_manager'].includes(currentUser.role)) {
       fetchUsers();
       fetchDepartments();
     }
@@ -215,7 +215,7 @@ export default function UserManagement() {
     }
   };
 
-  if (!currentUser || !['admin', 'ceo', 'manager', 'department_manager'].includes(currentUser.role)) {
+  if (!currentUser || !['admin', 'ceo', 'chief_manager', 'department_manager'].includes(currentUser.role)) {
     return (
       <div className="py-12 text-center">
         <h2 className="text-2xl font-bold text-red-600">Access Denied</h2>
@@ -227,7 +227,7 @@ export default function UserManagement() {
   const roleColor = (role: string) => {
     if (role === 'admin') return 'bg-red-100 text-red-800';
     if (role === 'department_manager') return 'bg-purple-100 text-purple-800';
-    if (role === 'manager') return 'bg-blue-100 text-blue-800';
+    if (role === 'chief_manager') return 'bg-blue-100 text-blue-800';
     return 'bg-green-100 text-green-800';
   };
 
@@ -304,7 +304,7 @@ export default function UserManagement() {
                       <div className="flex items-center text-sm text-gray-900 dark:text-gray-300">
                         <Shield className="mr-1.5 h-4 w-4 text-gray-400" />
                         <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${roleColor(user.role)}`}>
-                          {user.role}
+                          {user.role === 'chief_manager' ? 'chief manager' : user.role}
                         </span>
                       </div>
                     </td>
@@ -333,7 +333,7 @@ export default function UserManagement() {
                     {/* Actions */}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        {(!['manager', 'department_manager'].includes(currentUser?.role || '') || !['admin', 'ceo'].includes(user.role)) && (
+                        {(!['chief_manager', 'department_manager'].includes(currentUser?.role || '') || !['admin', 'ceo'].includes(user.role)) && (
                           <button
                             onClick={() => openEditModal(user)}
                             className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50 transition-colors"

@@ -1,4 +1,4 @@
-require('dotenv').config({ path: './taskflow-backend/.env' });
+require('./taskflow-backend/node_modules/dotenv').config({ path: './taskflow-backend/.env' });
 const { User, Team, Project } = require('./taskflow-backend/models');
 const sequelize = require('./taskflow-backend/config/db');
 

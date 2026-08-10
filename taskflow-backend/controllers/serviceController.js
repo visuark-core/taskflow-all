@@ -21,7 +21,7 @@ exports.getServices = asyncHandler(async (req, res, next) => {
 // @route   POST /api/services
 // @access  Private (Admin/Manager/Executive)
 exports.createService = asyncHandler(async (req, res, next) => {
-  const authorizedRoles = ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'];
+  const authorizedRoles = ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'chief_manager', 'department_manager'];
   if (!authorizedRoles.includes(req.user.role)) {
     return next(new ErrorResponse('Not authorized to create services', 403));
   }
@@ -44,7 +44,7 @@ exports.createService = asyncHandler(async (req, res, next) => {
 // @route   PUT /api/services/:id
 // @access  Private (Admin/Manager/Executive)
 exports.updateService = asyncHandler(async (req, res, next) => {
-  const authorizedRoles = ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'];
+  const authorizedRoles = ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'chief_manager', 'department_manager'];
   if (!authorizedRoles.includes(req.user.role)) {
     return next(new ErrorResponse('Not authorized to update services', 403));
   }
@@ -67,7 +67,7 @@ exports.updateService = asyncHandler(async (req, res, next) => {
 // @route   DELETE /api/services/:id
 // @access  Private (Admin/Manager/Executive)
 exports.deleteService = asyncHandler(async (req, res, next) => {
-  const authorizedRoles = ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'];
+  const authorizedRoles = ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'chief_manager', 'department_manager'];
   if (!authorizedRoles.includes(req.user.role)) {
     return next(new ErrorResponse('Not authorized to delete services', 403));
   }

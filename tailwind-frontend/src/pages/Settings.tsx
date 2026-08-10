@@ -189,7 +189,7 @@ export default function Settings() {
                       >
                         <option value="user">User</option>
                         <option value="admin">Admin</option>
-                        <option value="manager">Manager</option>
+                        <option value="chief_manager">Chief Manager</option>
                         <option value="developer">Developer</option>
                         <option value="designer">Designer</option>
                         <option value="tester">Tester</option>

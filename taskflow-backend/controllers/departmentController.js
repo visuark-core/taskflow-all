@@ -3,7 +3,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const ErrorResponse = require('../utils/errorResponse');
 
 exports.getDepartments = asyncHandler(async (req, res, next) => {
-  const authorizedRoles = ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'];
+  const authorizedRoles = ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'chief_manager', 'department_manager'];
   if (!authorizedRoles.includes(req.user.role)) {
     return next(new ErrorResponse('Not authorized to view all departments', 403));
   }
@@ -47,7 +47,7 @@ exports.getDepartment = asyncHandler(async (req, res, next) => {
 
   if (!department) return next(new ErrorResponse('Department not found', 404));
 
-  const isAdminOrExecutive = ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'].includes(req.user.role);
+  const isAdminOrExecutive = ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'chief_manager', 'department_manager'].includes(req.user.role);
   const isManager = department.managerId === req.user.id;
   const isMember = department.members.some(m => m.id === req.user.id);
 
@@ -59,7 +59,7 @@ exports.getDepartment = asyncHandler(async (req, res, next) => {
 });
 
 exports.createDepartment = asyncHandler(async (req, res, next) => {
-  const allowedRoles = ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'];
+  const allowedRoles = ['admin', 'ceo', 'chief_manager'];
   if (!allowedRoles.includes(req.user.role)) {
     return next(new ErrorResponse('Not authorized to create departments', 403));
   }
@@ -104,7 +104,7 @@ exports.updateDepartment = asyncHandler(async (req, res, next) => {
   const department = await Department.findByPk(req.params.id);
   if (!department) return next(new ErrorResponse('Department not found', 404));
 
-  const isAdminOrExecutive = ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'].includes(req.user.role);
+  const isAdminOrExecutive = ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'chief_manager', 'department_manager'].includes(req.user.role);
   const isManager = department.managerId === req.user.id;
 
   if (!isAdminOrExecutive && !isManager) return next(new ErrorResponse('Not authorized', 403));
@@ -140,7 +140,7 @@ exports.updateDepartment = asyncHandler(async (req, res, next) => {
 });
 
 exports.deleteDepartment = asyncHandler(async (req, res, next) => {
-  const allowedRoles = ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'manager', 'department_manager'];
+  const allowedRoles = ['admin', 'ceo', 'chief_manager'];
   if (!allowedRoles.includes(req.user.role)) return next(new ErrorResponse('Not authorized to delete departments', 403));
 
   const department = await Department.findByPk(req.params.id, { include: [Team] });

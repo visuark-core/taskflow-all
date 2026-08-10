@@ -34,7 +34,7 @@ const User = sequelize.define(
       type: DataTypes.ENUM(
         "user",
         "admin",
-        "manager",
+        "chief_manager",
         "department_manager",
         "developer",
         "designer",

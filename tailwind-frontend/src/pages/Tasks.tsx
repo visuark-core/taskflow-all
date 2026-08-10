@@ -141,22 +141,24 @@ export default function Tasks() {
     <div className="animate-fade-in space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Tasks</h1>
-        <div className="flex gap-2">
-          <button 
-            className="btn btn-primary"
-            onClick={() => setIsNewTaskModalOpen(true)}
-          >
-            <Plus className="mr-1 h-4 w-4" />
-            New Task
-          </button>
-          <button
-            className="btn btn-secondary"
-            onClick={() => setIsNewProjectModalOpen(true)}
-          >
-            <Plus className="mr-1 h-4 w-4" />
-            Create Project
-          </button>
-        </div>
+        {currentUser && ['admin', 'ceo', 'chief_manager', 'department_manager'].includes(currentUser.role) && (
+          <div className="flex gap-2">
+            <button 
+              className="btn btn-primary"
+              onClick={() => setIsNewTaskModalOpen(true)}
+            >
+              <Plus className="mr-1 h-4 w-4" />
+              New Task
+            </button>
+            <button
+              className="btn btn-secondary"
+              onClick={() => setIsNewProjectModalOpen(true)}
+            >
+              <Plus className="mr-1 h-4 w-4" />
+              Create Project
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Filters and search */}

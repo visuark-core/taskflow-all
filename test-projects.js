@@ -1,3 +1,4 @@
+require('./taskflow-backend/node_modules/dotenv').config({ path: './taskflow-backend/.env' });
 const { User, Team, Project } = require('./taskflow-backend/models');
 const sequelize = require('./taskflow-backend/config/db');
 
@@ -5,7 +6,7 @@ async function test() {
   await sequelize.authenticate();
   
   // Find a manager user
-  const users = await User.findAll({ where: { role: 'manager' } });
+  const users = await User.findAll({ where: { role: 'chief_manager' } });
   if (users.length === 0) { console.log('No managers found'); process.exit(); }
   const manager = users[0];
   console.log('Manager ID:', manager.id, manager.name);

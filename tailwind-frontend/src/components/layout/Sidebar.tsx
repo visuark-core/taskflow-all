@@ -50,7 +50,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
   const user = useSelector((state: any) => state.auth.user);
   const isAdmin = user?.role === 'admin';
   const isCeo = user?.role === 'ceo';
-  const isManager = ['manager', 'department_manager'].includes(user?.role);
+  const isManager = ['chief_manager', 'department_manager'].includes(user?.role);
 
   const allowedAdminNav = adminNavigation.filter(item => {
     if (item.href === '/departments') {
@@ -63,7 +63,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
   });
   const isFinanceAuthorized = user && (
     ['admin', 'ceo', 'cfo'].includes(user.role) ||
-    (['manager', 'department_manager'].includes(user.role) && user.department?.toLowerCase() === 'finance')
+    (['chief_manager', 'department_manager'].includes(user.role) && user.department?.toLowerCase() === 'finance')
   );
 
   const allowedNav = navigation.filter(item => {
