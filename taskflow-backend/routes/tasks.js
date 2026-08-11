@@ -10,7 +10,8 @@ const {
   deleteTask,
   addComment,
   reorderTasks,
-  addAttachment
+  addAttachment,
+  deleteAttachment
 } = require('../controllers/taskController');
 const { protect } = require('../middlewares/auth');
 const upload = require('../config/upload');
@@ -29,6 +30,7 @@ router.get('/me', getMyTasks);
 router.get('/project/:projectId', getTasks);
 router.post('/:id/comments', addComment);
 router.post('/:id/attachments', upload.single('file'), addAttachment);
+router.delete('/attachments/:attachmentId', deleteAttachment);
 router.put('/reorder', reorderTasks);
 
 router

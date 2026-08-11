@@ -190,6 +190,29 @@ export default function TaskDetail() {
     }
   };
 
+  const handleDeleteAttachment = async (attachmentId: string) => {
+    if (!window.confirm('Are you sure you want to delete this attachment?')) return;
+
+    const base = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
+    try {
+      const response = await fetch(`${base}/tasks/attachments/${attachmentId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: token ? `Bearer ${token}` : ''
+        }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setTask((prev: any) => ({
+          ...prev,
+          attachments: (prev.attachments || []).filter((att: any) => (att._id || att.id) !== attachmentId)
+        }));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     if (!id) return;
     setLoading(true);
@@ -369,6 +392,12 @@ export default function TaskDetail() {
                       >
                         <Download className="h-3.5 w-3.5" /> Download
                       </a>
+                      <button
+                        onClick={() => handleDeleteAttachment(att._id || att.id)}
+                        className="flex items-center gap-1 text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-medium"
+                      >
+                        <Trash className="h-3.5 w-3.5" /> Delete
+                      </button>
                     </div>
                   </li>
                 );

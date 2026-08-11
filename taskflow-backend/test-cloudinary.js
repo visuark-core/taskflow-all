@@ -13,7 +13,8 @@ async function test() {
 
   try {
     const result = await cloudinary.uploader.upload(filePath, {
-      folder: 'taskflow/avatars'
+      folder: 'taskflow/avatars',
+      resource_type: 'raw'
     });
     console.log('Upload successful!');
     console.log('Result URL:', result.secure_url);

@@ -265,3 +265,16 @@ exports.addAttachment = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse('Cloudinary upload failed: ' + uploadErr.message, 500));
   }
 });
+
+exports.deleteAttachment = asyncHandler(async (req, res, next) => {
+  const attachmentId = req.params.attachmentId;
+  const attachment = await TaskAttachment.findByPk(attachmentId);
+
+  if (!attachment) {
+    return next(new ErrorResponse('Attachment not found', 404));
+  }
+
+  await attachment.destroy();
+
+  res.status(200).json({ success: true, data: {} });
+});
