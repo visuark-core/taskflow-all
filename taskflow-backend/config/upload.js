@@ -5,7 +5,8 @@ const fs = require('fs');
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const dir = process.env.UPLOAD_PATH || 'uploads';
+    const isVercel = process.env.VERCEL === '1' || process.env.NOW_REGION;
+    const dir = isVercel ? '/tmp' : (process.env.UPLOAD_PATH || 'uploads');
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
