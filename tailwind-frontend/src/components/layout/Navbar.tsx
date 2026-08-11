@@ -25,6 +25,12 @@ export default function Navbar({ children }: NavbarProps) {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
 
+  const getAvatarUrl = (avatarUrl?: string) => {
+    if (!avatarUrl) return undefined;
+    if (avatarUrl.startsWith('http')) return avatarUrl;
+    return `${import.meta.env.VITE_API_URL?.replace('/api', '') || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`}${avatarUrl}`;
+  };
+
   const fetchNotifications = async () => {
     if (!user) return;
     try {
@@ -179,7 +185,7 @@ export default function Navbar({ children }: NavbarProps) {
               }}
             >
               {user ? (
-                <Avatar name={user.name} />
+                <Avatar name={user.name} src={getAvatarUrl(user.avatar)} />
               ) : (
                 <Avatar name="" />
               )}
