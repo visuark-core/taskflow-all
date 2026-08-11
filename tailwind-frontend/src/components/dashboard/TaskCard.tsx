@@ -80,10 +80,14 @@ export default function TaskCard({ task, onDelete, showDelete }: TaskCardProps) 
               <span className="text-xs">{task.comments}</span>
             </div>
             
-            <div className="flex items-center space-x-1">
+            <Link
+              to={`/tasks/${task._id || task.id}?focus=attachments`}
+              className="flex items-center space-x-1 hover:text-primary-600 dark:hover:text-primary-400 cursor-pointer transition-colors"
+              title="View/Upload Attachments"
+            >
               <Paperclip className="h-3.5 w-3.5" />
               <span className="text-xs">{task.attachments}</span>
-            </div>
+            </Link>
           </div>
           
           <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">

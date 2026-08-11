@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useEffect, useState, useRef } from 'react';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import Avatar from '../components/ui/Avatar';
 import Badge from '../components/ui/Badge';
 import { formatDate } from '../lib/utils';
@@ -22,6 +22,28 @@ export default function TaskDetail() {
   const [submittingComment, setSubmittingComment] = useState(false);
   const currentUser = useSelector((state: RootState) => state.auth.user);
   const navigate = useNavigate();
+  const attachmentsRef = useRef<HTMLDivElement>(null);
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!loading && task) {
+      const params = new URLSearchParams(location.search);
+      if (params.get('focus') === 'attachments' && attachmentsRef.current) {
+        // Scroll to the attachments section smoothly
+        attachmentsRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // Temporarily highlight the section with a smooth transition
+        const element = attachmentsRef.current;
+        element.classList.add('ring-4', 'ring-primary-500/40', 'dark:ring-primary-400/40', 'transition-all', 'duration-300');
+        
+        const timer = setTimeout(() => {
+          element.classList.remove('ring-4', 'ring-primary-500/40', 'dark:ring-primary-400/40');
+        }, 2500);
+
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [location.search, loading, task]);
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -344,7 +366,7 @@ export default function TaskDetail() {
           </div>
 
           {/* Document Upload Column */}
-          <div className="space-y-4">
+          <div ref={attachmentsRef} className="space-y-4 p-2 rounded-lg transition-all duration-300">
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <Paperclip className="h-5 w-5 text-primary-500" /> Documents
             </h3>
