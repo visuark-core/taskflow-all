@@ -77,7 +77,7 @@ export default function TaskCard({ task, onDelete, showDelete }: TaskCardProps) 
           <div className="flex items-center space-x-3 text-gray-500 dark:text-gray-400">
             <div className="flex items-center space-x-1">
               <MessageSquare className="h-3.5 w-3.5" />
-              <span className="text-xs">{task.comments}</span>
+              <span className="text-xs">{Array.isArray(task.comments) ? task.comments.length : (task.comments || 0)}</span>
             </div>
             
             <Link
@@ -86,7 +86,7 @@ export default function TaskCard({ task, onDelete, showDelete }: TaskCardProps) 
               title="View/Upload Attachments"
             >
               <Paperclip className="h-3.5 w-3.5" />
-              <span className="text-xs">{task.attachments}</span>
+              <span className="text-xs">{Array.isArray(task.attachments) ? task.attachments.length : (task.attachments || 0)}</span>
             </Link>
           </div>
           

@@ -23,6 +23,7 @@ export default function TaskDetail() {
   const currentUser = useSelector((state: RootState) => state.auth.user);
   const navigate = useNavigate();
   const attachmentsRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
 
   useEffect(() => {
@@ -32,6 +33,11 @@ export default function TaskDetail() {
         // Scroll to the attachments section smoothly
         attachmentsRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
         
+        // Open file dialog automatically
+        if (fileInputRef.current) {
+          fileInputRef.current.click();
+        }
+
         // Temporarily highlight the section with a smooth transition
         const element = attachmentsRef.current;
         element.classList.add('ring-4', 'ring-primary-500/40', 'dark:ring-primary-400/40', 'transition-all', 'duration-300');
@@ -373,6 +379,7 @@ export default function TaskDetail() {
 
             <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer relative">
               <input
+                ref={fileInputRef}
                 type="file"
                 onChange={handleFileUpload}
                 disabled={uploading}
