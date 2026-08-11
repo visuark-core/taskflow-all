@@ -22,7 +22,7 @@ export default function Tasks() {
     async function fetchProjects() {
       setLoading(true);
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`}/projects`, {
+        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/projects`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
