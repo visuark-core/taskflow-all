@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=TaskFlow
+Comment=TaskFlow Project Management System
+Exec=/usr/bin/taskflow open
+Icon=taskflow
+Terminal=false
+Type=Application
+Categories=Office;Development;

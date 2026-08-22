@@ -1,0 +1,10 @@
+Package: taskflow
+Version: 1.0.0
+Section: misc
+Priority: optional
+Architecture: all
+Depends: nodejs (>= 16)
+Maintainer: Tony <tony@visuark.com>
+Description: TaskFlow Project Management System
+ TaskFlow is a full-stack project management system featuring a Vite/React
+ frontend and an Express/Node.js backend.

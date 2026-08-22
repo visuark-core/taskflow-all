@@ -275,7 +275,11 @@ router.get('/ceo', authorize('admin', 'ceo'), asyncHandler(async (req, res) => {
   };
 
   const departments = await Department.findAll({
-    include: [{ model: User, as: 'manager', attributes: ['id', 'name'] }]
+    include: [
+      { model: User, as: 'manager', attributes: ['id', 'name'] },
+      { model: Team, attributes: ['id'] },
+      { model: User, as: 'members', attributes: ['id'] }
+    ]
   });
 
   const departmentBreakdown = departments.map(dept => {
@@ -283,9 +287,9 @@ router.get('/ceo', authorize('admin', 'ceo'), asyncHandler(async (req, res) => {
       id: dept.id,
       name: dept.name,
       manager: dept.manager?.name || 'Unassigned',
-      memberCount: 0,
-      teamCount: 0,
-      status: 'active'
+      memberCount: dept.members?.length || 0,
+      teamCount: dept.Teams?.length || 0,
+      status: dept.status || 'active'
     };
   });
 
@@ -318,7 +322,10 @@ router.get('/ceo', authorize('admin', 'ceo'), asyncHandler(async (req, res) => {
 // Get Company-wide CFO dashboard statistics
 router.get('/cfo', authorize('admin', 'cfo'), asyncHandler(async (req, res) => {
   const departments = await Department.findAll({
-    include: [{ model: User, as: 'manager', attributes: ['id', 'name'] }]
+    include: [
+      { model: User, as: 'manager', attributes: ['id', 'name'] },
+      { model: User, as: 'members', attributes: ['id'] }
+    ]
   });
   const totalBudget = departments.reduce((sum, dept) => sum + (dept.budget || 0), 0);
 
@@ -331,9 +338,9 @@ router.get('/cfo', authorize('admin', 'cfo'), asyncHandler(async (req, res) => {
     id: dept.id,
     name: dept.name,
     budget: dept.budget || 0,
-    memberCount: 0,
+    memberCount: dept.members?.length || 0,
     manager: dept.manager?.name || 'Unassigned',
-    status: 'active'
+    status: dept.status || 'active'
   }));
 
   const topProjects = projects
@@ -369,16 +376,76 @@ router.get('/cfo', authorize('admin', 'cfo'), asyncHandler(async (req, res) => {
 
 // Get Company-wide CTO dashboard statistics
 router.get('/cto', authorize('admin', 'cto'), asyncHandler(async (req, res) => {
-  const devs = await User.count({ where: { role: 'developer' } });
-  const testers = await User.count({ where: { role: 'tester' } });
-  const designers = await User.count({ where: { role: 'designer' } });
+  const devsByRole = await User.count({ where: { role: 'developer' } });
+  const testersByRole = await User.count({ where: { role: 'tester' } });
+  const designersByRole = await User.count({ where: { role: 'designer' } });
 
-  const displayedProjects = await Project.findAll({
-    order: [['updatedAt', 'DESC']],
-    limit: 5
+  const techDepts = await Department.findAll({
+    where: {
+      name: {
+        [Op.or]: [
+          { [Op.iLike]: '%eng%' },
+          { [Op.iLike]: '%tech%' },
+          { [Op.iLike]: '%dev%' },
+          { [Op.iLike]: '%soft%' }
+        ]
+      }
+    },
+    include: [{ model: User, as: 'members', attributes: ['id', 'role'] }]
   });
 
-  const tasks = await Task.findAll({});
+  let developersCount = devsByRole;
+  let testersCount = testersByRole;
+  let designersCount = designersByRole;
+
+  techDepts.forEach(dept => {
+    dept.members?.forEach(m => {
+      if (m.role === 'developer') {
+        // already counted
+      } else if (m.role === 'tester') {
+        // already counted
+      } else if (m.role === 'designer') {
+        // already counted
+      } else if (m.role === 'user') {
+        const deptName = dept.name.toLowerCase();
+        if (deptName.includes('qa') || deptName.includes('test')) {
+          testersCount++;
+        } else if (deptName.includes('design') || deptName.includes('ux') || deptName.includes('ui')) {
+          designersCount++;
+        } else {
+          developersCount++;
+        }
+      }
+    });
+  });
+
+  const totalTech = developersCount + testersCount + designersCount;
+
+  const allProjects = await Project.findAll({
+    include: [{
+      model: Team,
+      include: [Department]
+    }]
+  });
+
+  const isTechProject = (p) => {
+    const deptName = p.Team?.Department?.name?.toLowerCase();
+    if (deptName) {
+      return ['eng', 'tech', 'dev', 'qa', 'product', 'design', 'soft', 'it'].some(kw => deptName.includes(kw));
+    }
+    const projText = `${p.name} ${p.description} ${JSON.stringify(p.tags || [])}`.toLowerCase();
+    return ['eng', 'tech', 'dev', 'qa', 'code', 'software', 'app', 'system', 'build'].some(kw => projText.includes(kw));
+  };
+
+  const techProjects = allProjects.filter(isTechProject);
+  const techProjectIds = techProjects.map(p => p.id);
+
+  const tasks = await Task.findAll({
+    where: {
+      projectId: { [Op.in]: techProjectIds }
+    }
+  });
+
   const taskStatusBreakdown = {
     todo: tasks.filter(t => t.status === 'todo').length,
     inProgress: tasks.filter(t => t.status === 'in-progress' || t.status === 'active').length,
@@ -393,24 +460,29 @@ router.get('/cto', authorize('admin', 'cto'), asyncHandler(async (req, res) => {
     low: tasks.filter(t => t.priority === 'low').length
   };
 
+  const topTechnicalProjects = techProjects
+    .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+    .slice(0, 5)
+    .map(p => ({
+      id: p.id,
+      name: p.name,
+      progress: p.progress,
+      status: p.status,
+      owner: 'System'
+    }));
+
   res.status(200).json({
     success: true,
     data: {
       workforce: {
-        developers: devs,
-        testers: testers,
-        designers: designers,
-        totalTech: devs + testers + designers
+        developers: developersCount,
+        testers: testersCount,
+        designers: designersCount,
+        totalTech: totalTech
       },
       taskStatus: taskStatusBreakdown,
       priorities: priorityBreakdown,
-      topTechnicalProjects: displayedProjects.map(p => ({
-        id: p.id,
-        name: p.name,
-        progress: p.progress,
-        status: p.status,
-        owner: 'System'
-      })),
+      topTechnicalProjects: topTechnicalProjects,
       totalTasks: tasks.length
     }
   });
@@ -418,20 +490,76 @@ router.get('/cto', authorize('admin', 'cto'), asyncHandler(async (req, res) => {
 
 // Get Company-wide CMO dashboard statistics
 router.get('/cmo', authorize('admin', 'cmo'), asyncHandler(async (req, res) => {
-  const marketingPersonnel = await User.count({ where: { role: 'marketer' } });
-  
-  const displayedCampaigns = await Project.findAll({
-    order: [['createdAt', 'DESC']],
-    limit: 5
+  const explicitMarketers = await User.count({ where: { role: 'marketer' } });
+
+  const mktDepts = await Department.findAll({
+    where: {
+      name: {
+        [Op.or]: [
+          { [Op.iLike]: '%market%' },
+          { [Op.iLike]: '%growth%' },
+          { [Op.iLike]: '%sale%' },
+          { [Op.iLike]: '%pr%' },
+          { [Op.iLike]: '%brand%' }
+        ]
+      }
+    },
+    include: [{ model: User, as: 'members', attributes: ['id', 'role'] }]
   });
 
-  const tasks = await Task.findAll({});
+  let marketingPersonnel = explicitMarketers;
+  mktDepts.forEach(dept => {
+    dept.members?.forEach(m => {
+      if (m.role === 'marketer') {
+        // already counted
+      } else if (m.role === 'user') {
+        marketingPersonnel++;
+      }
+    });
+  });
+
+  const allProjects = await Project.findAll({
+    include: [{
+      model: Team,
+      include: [Department]
+    }]
+  });
+
+  const isMarketingProject = (p) => {
+    const deptName = p.Team?.Department?.name?.toLowerCase();
+    if (deptName) {
+      return ['market', 'growth', 'sale', 'pr', 'brand', 'cmo', 'campaign', 'social'].some(kw => deptName.includes(kw));
+    }
+    const projText = `${p.name} ${p.description} ${JSON.stringify(p.tags || [])}`.toLowerCase();
+    return ['market', 'growth', 'sale', 'pr', 'brand', 'campaign', 'social', 'ad'].some(kw => projText.includes(kw));
+  };
+
+  const marketingProjects = allProjects.filter(isMarketingProject);
+  const marketingProjectIds = marketingProjects.map(p => p.id);
+
+  const tasks = await Task.findAll({
+    where: {
+      projectId: { [Op.in]: marketingProjectIds }
+    }
+  });
+
   const taskStatusBreakdown = {
     todo: tasks.filter(t => t.status === 'todo').length,
     inProgress: tasks.filter(t => t.status === 'in-progress' || t.status === 'active').length,
     review: tasks.filter(t => t.status === 'review').length,
     done: tasks.filter(t => t.status === 'done' || t.status === 'completed').length
   };
+
+  const topCampaigns = marketingProjects
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, 5)
+    .map(p => ({
+      id: p.id,
+      name: p.name,
+      progress: p.progress,
+      status: p.status,
+      owner: 'System'
+    }));
 
   res.status(200).json({
     success: true,
@@ -441,19 +569,13 @@ router.get('/cmo', authorize('admin', 'cmo'), asyncHandler(async (req, res) => {
         supportStaff: Math.ceil(marketingPersonnel * 0.2)
       },
       campaigns: {
-        total: displayedCampaigns.length,
-        active: displayedCampaigns.filter(p => p.status === 'active').length,
-        completed: displayedCampaigns.filter(p => p.status === 'completed').length
+        total: marketingProjects.length,
+        active: marketingProjects.filter(p => p.status === 'active').length,
+        completed: marketingProjects.filter(p => p.status === 'completed').length
       },
       taskStatus: taskStatusBreakdown,
-      topCampaigns: displayedCampaigns.map(p => ({
-        id: p.id,
-        name: p.name,
-        progress: p.progress,
-        status: p.status,
-        owner: 'System'
-      })),
-      engagementVelocity: tasks.length > 0 ? ((taskStatusBreakdown.done / tasks.length) * 100).toFixed(0) : 0
+      topCampaigns: topCampaigns,
+      engagementVelocity: tasks.length > 0 ? Math.round((taskStatusBreakdown.done / tasks.length) * 100) : 0
     }
   });
 }));

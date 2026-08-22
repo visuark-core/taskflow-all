@@ -1,0 +1,18 @@
+#!/bin/bash
+set -e
+
+if [ "$1" = "purge" ]; then
+    # Remove taskflow files, database credentials, uploads, etc.
+    rm -rf /opt/taskflow
+    
+    # Optionally remove taskflow user
+    if getent passwd taskflow >/dev/null; then
+        userdel taskflow || true
+    fi
+fi
+
+if [ -d /run/systemd/system ]; then
+    systemctl daemon-reload
+fi
+
+exit 0

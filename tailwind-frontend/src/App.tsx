@@ -17,6 +17,7 @@ import KanbanBoard from './pages/KanbanBoard';
 import NotFound from './pages/NotFound';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import Installer from './pages/Installer';
 import Profile from './pages/Profile';
 import Notifications from './pages/Notifications';
 import CompanyTree from './pages/CompanyTree';
@@ -39,6 +40,7 @@ function App() {
         {/* Auth routes */}
   <Route path="/login" element={<Login />} />
   <Route path="/signup" element={<Signup />} />
+  <Route path="/installer" element={<Installer />} />
         <Route path="/profile" element={
           <ProtectedRoute>
             <Layout />

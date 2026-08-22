@@ -1,0 +1,63 @@
+#!/bin/bash
+
+show_help() {
+    echo "TaskFlow CLI Command Utility"
+    echo "Usage: taskflow [command]"
+    echo ""
+    echo "Commands:"
+    echo "  start      Start the TaskFlow background service"
+    echo "  stop       Stop the TaskFlow background service"
+    echo "  restart    Restart the TaskFlow background service"
+    echo "  status     Check the status of the TaskFlow service"
+    echo "  logs       View the logs of the TaskFlow service"
+    echo "  open       Open TaskFlow in the default web browser"
+    echo "  help       Show this help message"
+    echo ""
+}
+
+case "$1" in
+    start)
+        echo "Starting TaskFlow service..."
+        sudo systemctl start taskflow.service
+        ;;
+    stop)
+        echo "Stopping TaskFlow service..."
+        sudo systemctl stop taskflow.service
+        ;;
+    restart)
+        echo "Restarting TaskFlow service..."
+        sudo systemctl restart taskflow.service
+        ;;
+    status)
+        systemctl status taskflow.service
+        ;;
+    logs)
+        if [ "$2" = "-f" ]; then
+            journalctl -u taskflow.service -f
+        else
+            journalctl -u taskflow.service -n 50 --no-pager
+        fi
+        ;;
+    open)
+        echo "Opening TaskFlow in desktop window..."
+        if command -v google-chrome >/dev/null 2>&1; then
+            google-chrome --app=http://localhost:5000 >/dev/null 2>&1 &
+        elif command -v chromium-browser >/dev/null 2>&1; then
+            chromium-browser --app=http://localhost:5000 >/dev/null 2>&1 &
+        elif command -v chromium >/dev/null 2>&1; then
+            chromium --app=http://localhost:5000 >/dev/null 2>&1 &
+        else
+            xdg-open http://localhost:5000 >/dev/null 2>&1 &
+        fi
+        ;;
+    help|--help|-h|"")
+        show_help
+        ;;
+    *)
+        echo "Unknown command: $1"
+        show_help
+        exit 1
+        ;;
+esac
+
+exit 0

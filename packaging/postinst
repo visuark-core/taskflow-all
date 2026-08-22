@@ -1,0 +1,32 @@
+#!/bin/bash
+set -e
+
+# Create taskflow user/group if it doesn't exist
+if ! getent group taskflow >/dev/null; then
+    groupadd --system taskflow
+fi
+if ! getent passwd taskflow >/dev/null; then
+    useradd --system \
+            --gid taskflow \
+            --no-create-home \
+            --home-dir /opt/taskflow \
+            --shell /usr/sbin/nologin \
+            taskflow
+fi
+
+# Create upload directory and set ownership
+mkdir -p /opt/taskflow/uploads
+chown -R taskflow:taskflow /opt/taskflow
+chmod -R 755 /opt/taskflow
+chmod -R 775 /opt/taskflow/uploads
+
+# Reload systemd and enable/restart service
+if [ -d /run/systemd/system ]; then
+    systemctl daemon-reload
+    systemctl enable taskflow.service
+    systemctl restart taskflow.service || true
+fi
+
+echo "TaskFlow service has been installed, enabled, and started."
+echo "You can access it at http://localhost:5000"
+exit 0

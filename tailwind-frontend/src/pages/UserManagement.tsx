@@ -18,7 +18,7 @@ interface User {
   };
 }
 
-const ROLES = ['user', 'admin', 'ceo', 'coo', 'cfo', 'cto', 'cmo', 'chief_manager', 'department_manager', 'developer', 'designer', 'tester'];
+const ROLES = ['user', 'admin', 'ceo', 'coo', 'cfo', 'cto', 'cmo', 'chief_manager', 'department_manager', 'developer', 'designer', 'tester', 'marketer'];
 
 export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);

@@ -1,0 +1,9 @@
+#!/bin/bash
+set -e
+
+if [ -d /run/systemd/system ]; then
+    systemctl stop taskflow.service || true
+    systemctl disable taskflow.service || true
+fi
+
+exit 0

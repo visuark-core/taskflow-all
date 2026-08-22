@@ -43,7 +43,8 @@ const User = sequelize.define(
         "cfo",
         "cto",
         "cmo",
-        "coo"
+        "coo",
+        "marketer"
       ),
       defaultValue: "user",
     },

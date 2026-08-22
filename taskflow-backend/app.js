@@ -68,6 +68,7 @@ app.use(express.urlencoded({ extended: true }));
 // Enable CORS
 const allowedOrigins = [
   process.env.CLIENT_URL,
+  'http://localhost:5000',
   'http://localhost:5173',
   'http://localhost:5174',
   'https://remarkable-mandazi-a53c25.netlify.app'
@@ -107,15 +108,22 @@ app.get('/api/request-logs', (req, res) => {
   });
 });
 
-app.get('/', async (req, res) => {
-  try {
-    const { User } = require('./models');
-    const count = await User.count();
-    res.send(`Backend is running successfully and API connected successfully! Total users in DB: ${count}`);
-  } catch (err) {
-    res.status(500).send(`Backend is running, but database connection failed: ${err.message}`);
-  }
-});
+const frontendDistPath = process.env.FRONTEND_DIST_PATH || path.join(__dirname, '../tailwind-frontend/dist');
+const hasFrontend = require('fs').existsSync(frontendDistPath);
+
+if (hasFrontend) {
+  app.use(express.static(frontendDistPath));
+} else {
+  app.get('/', async (req, res) => {
+    try {
+      const { User } = require('./models');
+      const count = await User.count();
+      res.send(`Backend is running successfully and API connected successfully! Total users in DB: ${count}`);
+    } catch (err) {
+      res.status(500).send(`Backend is running, but database connection failed: ${err.message}`);
+    }
+  });
+}
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -143,6 +151,16 @@ app.get('/api/db-sync', async (req, res) => {
   }
 });
 
+if (hasFrontend) {
+  // For SPA routing, redirect all non-API/non-upload requests to index.html
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
+      return next();
+    }
+    res.sendFile(path.join(frontendDistPath, 'index.html'));
+  });
+}
+
 // Handle 404s
 app.use((req, res, next) => {
   res.status(404).json({ success: false, error: 'Route not found' });
@@ -151,7 +169,16 @@ app.use((req, res, next) => {
 // Error handler (last)
 app.use(errorHandler);
 
-const connectPromise = Promise.resolve(true);
+const connectPromise = (async () => {
+  try {
+    const { sequelize } = require('./models');
+    await sequelize.query(`ALTER TYPE "enum_Users_role" ADD VALUE IF NOT EXISTS 'marketer';`);
+    console.log('[Startup] Role enum updated successfully (added marketer)');
+  } catch (err) {
+    console.warn('[Startup] Could not alter enum type enum_Users_role to add marketer:', err.message);
+  }
+  return true;
+})();
 
 // expose a ready promise to know when DB is connected
 app.ready = connectPromise;
