@@ -1,7 +1,7 @@
 // routes/reports.js
 const express = require('express');
 const { protect, authorize } = require('../middlewares/auth');
-const { Project, User, Team, Task, Activity, Department } = require('../models');
+const { Project, User, Team, Task, Activity, Department, Invoice } = require('../models');
 const { Op } = require('sequelize');
 const asyncHandler = require('../utils/asyncHandler');
 
@@ -302,6 +302,9 @@ router.get('/ceo', authorize('admin', 'ceo'), asyncHandler(async (req, res) => {
     limit: 20
   });
 
+  const paidInvoices = await Invoice.findAll({ where: { status: 'paid' } });
+  const totalRevenue = paidInvoices.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
+
   res.status(200).json({
     success: true,
     data: {
@@ -309,7 +312,8 @@ router.get('/ceo', authorize('admin', 'ceo'), asyncHandler(async (req, res) => {
         users: userCount,
         departments: departmentCount,
         projects: projectCount,
-        tasks: totalTasks
+        tasks: totalTasks,
+        revenue: totalRevenue
       },
       projectStats,
       taskStats,

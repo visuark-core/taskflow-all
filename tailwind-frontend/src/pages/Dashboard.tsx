@@ -29,7 +29,8 @@ import {
   TrendingDown,
   Layers,
   Award,
-  Wallet
+  Wallet,
+  IndianRupee
 } from 'lucide-react';
 import StatsCard from '../components/dashboard/StatsCard';
 import ProjectCard from '../components/dashboard/ProjectCard';
@@ -402,16 +403,16 @@ export default function Dashboard() {
           </div>
           <div>
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">Operations & CEO Command</h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Overview of departments, workforce, project pipeline and real-time activity.</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Overview of departments, revenue, project pipeline and real-time activity.</p>
           </div>
         </div>
 
         {/* Main 4 Cards */}
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           <StatsCard
-            title="Total Workforce"
-            value={ceoData?.counts?.users || 0}
-            icon={Users}
+            title="Revenue"
+            value={formatCurrency(ceoData?.counts?.revenue || 0)}
+            icon={IndianRupee}
             iconColor="bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400"
             trend={{ value: 8, direction: 'up' }}
           />
