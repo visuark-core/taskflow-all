@@ -354,9 +354,9 @@ export default function Dashboard() {
   };
 
   const totalAllocation = cfoData?.financials?.totalAllocation || 0;
-  const totalBudget = cfoData?.financials?.totalBudget || 1;
-  const budgetProgress = totalBudget > 0 ? Math.min((totalAllocation / totalBudget) * 100, 100) : 0;
-  const budgetRatioString = totalBudget > 0 ? ((totalAllocation / totalBudget) * 100).toFixed(0) : '0';
+  const actualBudget = cfoData?.financials?.totalBudget ?? 0;
+  const budgetProgress = actualBudget > 0 ? Math.min((totalAllocation / actualBudget) * 100, 100) : (totalAllocation > 0 ? 100 : 0);
+  const budgetRatioString = actualBudget > 0 ? ((totalAllocation / actualBudget) * 100).toFixed(0) : (totalAllocation > 0 ? '100' : '0');
 
   return (
     <div className="space-y-12 animate-fade-in pb-20">
