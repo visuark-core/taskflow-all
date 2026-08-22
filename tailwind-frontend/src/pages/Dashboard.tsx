@@ -637,7 +637,7 @@ export default function Dashboard() {
             <div 
               className={cn(
                 'h-full rounded-full bg-gradient-to-r',
-                (totalAllocation / totalBudget) > 1
+                (cfoData?.financials?.remainingBudget || 0) < 0
                   ? 'from-red-500 to-rose-600'
                   : 'from-emerald-500 to-indigo-500'
               )}
