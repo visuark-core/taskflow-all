@@ -353,6 +353,7 @@ export default function Dashboard() {
     ];
   };
 
+  // Calculate budget allocation statistics safely avoiding division by zero or falsy fallbacks
   const totalAllocation = cfoData?.financials?.totalAllocation || 0;
   const actualBudget = cfoData?.financials?.totalBudget ?? 0;
   const budgetProgress = actualBudget > 0 ? Math.min((totalAllocation / actualBudget) * 100, 100) : (totalAllocation > 0 ? 100 : 0);
