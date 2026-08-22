@@ -66,7 +66,6 @@ export default function Dashboard() {
   const [ceoData, setCeoData] = useState<any>(null);
   const [cfoData, setCfoData] = useState<any>(null);
   const [ctoData, setCtoData] = useState<any>(null);
-  const [cmoData, setCmoData] = useState<any>(null);
   const [productivityData, setProductivityData] = useState<any[]>([]);
 
   const token = localStorage.getItem('token');
@@ -96,16 +95,14 @@ export default function Dashboard() {
         fetchJson(`${base}/reports/ceo`),
         fetchJson(`${base}/reports/cfo`),
         fetchJson(`${base}/reports/cto`),
-        fetchJson(`${base}/reports/cmo`),
         fetchJson(`${base}/reports/productivity`),
         fetchJson(`${base}/projects`)
       ])
-      .then(([ceoRes, cfoRes, ctoRes, cmoRes, prodRes, projRes]) => {
+      .then(([ceoRes, cfoRes, ctoRes, prodRes, projRes]) => {
         console.log('[Diagnostic] Finished fetching all admin reports');
         if (ceoRes && ceoRes.success) setCeoData(ceoRes.data);
         if (cfoRes && cfoRes.success) setCfoData(cfoRes.data);
         if (ctoRes && ctoRes.success) setCtoData(ctoRes.data);
-        if (cmoRes && cmoRes.success) setCmoData(cmoRes.data);
         if (prodRes && prodRes.success) setProductivityData(prodRes.data);
         if (projRes && (projRes.data || projRes.projects)) {
           setProjects(projRes.data || projRes.projects || []);
@@ -852,109 +849,6 @@ export default function Dashboard() {
                   ))}
                 </tbody>
               </table>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ==================== 📈 CMO / GROWTH & MARKETING SECTION ==================== */}
-      <div className="space-y-6">
-        <div className="flex items-center gap-3 border-b border-gray-100 dark:border-gray-800 pb-3 pt-6">
-          <div className="p-2 bg-purple-50 dark:bg-purple-950/20 text-purple-600 dark:text-purple-400 rounded-lg">
-            <TrendingUp size={20} />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Growth & Marketing Campaigns</h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Monitor marketer personnel metrics, campaign pipelines, and engagement progress velocities.</p>
-          </div>
-        </div>
-
-        {/* CMO Marketing Cards */}
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          <StatsCard
-            title="Marketing Personnel"
-            value={cmoData?.workforce?.totalMarketing || 0}
-            icon={Users}
-            iconColor="bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400"
-          />
-          <StatsCard
-            title="Total Campaigns"
-            value={cmoData?.campaigns?.total || 0}
-            icon={Briefcase}
-            iconColor="bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400"
-          />
-          <StatsCard
-            title="Active Campaigns"
-            value={cmoData?.campaigns?.active || 0}
-            icon={Clock}
-            iconColor="bg-warning-100 text-warning-600 dark:bg-warning-900/30 dark:text-warning-400"
-          />
-          <StatsCard
-            title="Campaign Progress"
-            value={`${cmoData?.engagementVelocity || 0}%`}
-            icon={TrendingUp}
-            iconColor="bg-success-100 text-success-600 dark:bg-success-900/30 dark:text-success-400"
-          />
-        </div>
-
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {/* Top Campaigns list */}
-          <div className="card p-6 bg-white dark:bg-gray-900 border border-gray-150 dark:border-gray-800 lg:col-span-2 space-y-4">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Active Growth Campaigns</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm border-collapse">
-                <thead>
-                  <tr className="border-b border-gray-100 dark:border-gray-800 text-gray-400 font-semibold">
-                    <th className="pb-3">Campaign Name</th>
-                    <th className="pb-3 text-center">Progress</th>
-                    <th className="pb-3">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50 dark:divide-gray-800/60">
-                  {cmoData?.topCampaigns?.map((camp: any) => (
-                    <tr key={camp.id}>
-                      <td className="py-3 font-semibold text-gray-800 dark:text-gray-200">{camp.name}</td>
-                      <td className="py-3 max-w-[200px]">
-                        <div className="flex items-center gap-2 justify-center">
-                          <div className="w-full max-w-[150px] bg-gray-100 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
-                            <div className="bg-primary-500 h-full rounded-full" style={{ width: `${camp.progress || 0}%` }}></div>
-                          </div>
-                          <span className="text-xs font-semibold text-gray-500">{camp.progress || 0}%</span>
-                        </div>
-                      </td>
-                      <td className="py-3">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold uppercase bg-purple-50 text-purple-700 dark:bg-purple-950/20 dark:text-purple-400">
-                          {camp.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* CMO Marketing Capacity Card */}
-          <div className="card p-6 bg-white dark:bg-gray-900 border border-gray-150 dark:border-gray-800 space-y-6">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Campaign Workforce Ratio</h3>
-            <div className="flex justify-center items-center h-48 relative">
-              {/* Circular indicator */}
-              <div className="w-36 h-36 rounded-full border-8 border-gray-100 dark:border-gray-800 flex flex-col justify-center items-center">
-                <span className="text-3xl font-extrabold text-purple-600 dark:text-purple-400">
-                  {cmoData?.workforce?.totalMarketing || 0}
-                </span>
-                <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider mt-1">Marketers</span>
-              </div>
-            </div>
-            <div className="space-y-3">
-              <div className="flex justify-between text-xs font-bold text-gray-500">
-                <span>Growth Marketers</span>
-                <span>{cmoData?.workforce?.totalMarketing || 0}</span>
-              </div>
-              <div className="flex justify-between text-xs font-bold text-gray-500">
-                <span>Support Personnel</span>
-                <span>{cmoData?.workforce?.supportStaff || 0}</span>
-              </div>
             </div>
           </div>
         </div>
