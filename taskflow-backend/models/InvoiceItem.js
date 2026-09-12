@@ -1,40 +1,38 @@
 const { DataTypes } = require("sequelize");
-const sequelize = require("../config/db");
 
-const InvoiceItem = sequelize.define("InvoiceItem", {
-  id: {
-    type: DataTypes.INTEGER,
-    autoIncrement: true,
-    primaryKey: true,
-  },
-  serviceName: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    validate: {
-      notEmpty: true,
+module.exports = (sequelize) =>
+  sequelize.define("InvoiceItem", {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
     },
-  },
-  rate: {
-    type: DataTypes.FLOAT,
-    allowNull: false,
-    validate: {
-      min: 0,
+    serviceName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: {
+        notEmpty: true,
+      },
     },
-  },
-  quantity: {
-    type: DataTypes.FLOAT,
-    defaultValue: 1,
-    validate: {
-      min: 0.01,
+    rate: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      validate: {
+        min: 0,
+      },
     },
-  },
-  amount: {
-    type: DataTypes.FLOAT,
-    allowNull: false,
-  },
-  description: {
-    type: DataTypes.TEXT,
-  },
-});
-
-module.exports = InvoiceItem;
+    quantity: {
+      type: DataTypes.FLOAT,
+      defaultValue: 1,
+      validate: {
+        min: 0.01,
+      },
+    },
+    amount: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+    },
+    description: {
+      type: DataTypes.TEXT,
+    },
+  });
