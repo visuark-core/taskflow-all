@@ -185,15 +185,16 @@ const connectPromise = (async () => {
     } catch (err) {
       console.warn('[Startup] Could not alter enum type enum_Users_role to add marketer:', err.message);
     }
-    // Ensure the primary schema (Users, Companies, ...) exists. On a fresh deployment
-    // this creates tables the app depends on (e.g. "Companies" for tenant provisioning).
-    // Plain sync() emits CREATE TABLE IF NOT EXISTS: creates only missing tables and
-    // never alters or drops existing ones, so it is safe and fast on every cold start.
+    // Ensure the primary schema (Users, Companies, ...) exists. Deterministic:
+    // creates only the specific global tables that are missing (never alters or
+    // drops existing ones), so it is safe on databases with legacy tables.
     try {
-      await sequelize.sync();
-      console.log('[Startup] Primary schema synced (create-if-missing)');
+      const ensurePrimarySchema = require("./utils/ensurePrimarySchema");
+      (async () => { await ensurePrimarySchema(); })().catch((err) => {
+        console.warn("[Startup] ensurePrimarySchema failed:", err.message);
+      });
     } catch (err) {
-      console.warn('[Startup] Primary schema sync failed:', err.message);
+      console.warn("[Startup] ensurePrimarySchema init failed:", err.message);
     }
   } catch (err) {
     console.warn('[Startup] DB connect error:', err.message);
