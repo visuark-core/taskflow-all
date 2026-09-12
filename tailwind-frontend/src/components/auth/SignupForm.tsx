@@ -9,9 +9,9 @@ import { registerUser } from '../../features/auth/authSlice';
 
 function SignupForm() {
   const dispatch = useAppDispatch();
-  const [companies, setCompanies] = useState<{ id: number; name: string; slug: string }[]>([]);
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
+  const [companyAvailable, setCompanyAvailable] = useState<{ status: 'idle' | 'checking' | 'available' | 'taken' }>({ status: 'idle' });
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -21,20 +21,35 @@ function SignupForm() {
   const navigate = useNavigate();
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+
   useEffect(() => {
-    fetch(`${API_URL}/api/companies`)
-      .then((r) => r.json())
-      .then((d) => setCompanies(d.data || []))
-      .catch(() => setCompanies([]));
-  }, [API_URL]);
+    if (!company.trim()) {
+      setCompanyAvailable({ status: 'idle' });
+      return;
+    }
+    setCompanyAvailable({ status: 'checking' });
+    const timer = setTimeout(() => {
+      fetch(`${API_URL}/api/companies/check?name=${encodeURIComponent(company.trim())}`)
+        .then((r) => r.json())
+        .then((d) =>
+          setCompanyAvailable({ status: d.available ? 'available' : 'taken' })
+        )
+        .catch(() => setCompanyAvailable({ status: 'idle' }));
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [company, API_URL]);
 
   const validateForm = () => {
     if (!name) {
       setFormError('Name is required');
       return false;
     }
-    if (!company) {
-      setFormError('Select your company');
+    if (!company.trim()) {
+      setFormError('Company name is required');
+      return false;
+    }
+    if (companyAvailable.status !== 'available') {
+      setFormError('This company name is already taken');
       return false;
     }
     if (!email) {
@@ -63,10 +78,10 @@ function SignupForm() {
       return;
     }
     try {
-      await dispatch(registerUser({ name, email, password, company, role: 'admin', department: 'management' }));
+      await dispatch(registerUser({ name, email, password, company: company.trim(), role: 'admin', department: 'management' })).unwrap();
       navigate('/');
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : 'Failed to create account');
+      setFormError(typeof error === 'string' ? error : 'Failed to create account');
     }
   };
 
@@ -90,26 +105,28 @@ function SignupForm() {
   <div className="space-y-4">
         <div className="space-y-2">
           <label htmlFor="company" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Company
+            Company name
           </label>
           <div className="relative">
-            <select
+            <input
               id="company"
+              type="text"
               value={company}
               onChange={(e) => setCompany(e.target.value)}
-              className="block w-full pl-3 pr-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-                focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            >
-              <option value="">Select your company</option>
-              {companies.map((c) => (
-                <option key={c.id} value={c.slug}>{c.name}</option>
-              ))}
-            </select>
+              placeholder="e.g. Acme Corp"
+              className="block w-full pl-3 pr-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm placeholder-gray-400
+                focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500
+                bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+            />
           </div>
-          {companies.length === 0 && (
-            <p className="text-xs text-amber-600 dark:text-amber-400">
-              No company workspaces available yet. Ask your admin to create one.
-            </p>
+          {companyAvailable.status === 'checking' && (
+            <p className="text-xs text-gray-500 dark:text-gray-400">Checking availability...</p>
+          )}
+          {companyAvailable.status === 'available' && (
+            <p className="text-xs text-green-600 dark:text-green-400">This company name is available</p>
+          )}
+          {companyAvailable.status === 'taken' && (
+            <p className="text-xs text-error-700 dark:text-error-400">This company name is already taken</p>
           )}
         </div>
         <div className="space-y-2">

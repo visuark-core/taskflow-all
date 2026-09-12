@@ -1,12 +1,30 @@
 const asyncHandler = require("../utils/asyncHandler");
 const ErrorResponse = require("../utils/errorResponse");
-const { Company } = require("../models");
+const { Company, sequelize } = require("../models");
 const tenantManager = require("../services/tenantManager");
+const slugify = require("../utils/slugify");
+
+const companyTaken = async (name) => {
+  const slug = slugify(name);
+  const bySlug = await Company.count({ where: { slug } });
+  const byName = await Company.count({
+    where: sequelize.where(sequelize.fn("lower", sequelize.col("name")), "=", String(name).trim().toLowerCase()),
+  });
+  return bySlug + byName > 0;
+};
 
 // public list of active companies for the signup form
 exports.getCompanies = asyncHandler(async (req, res) => {
   const rows = await Company.findAll({ where: { status: "active" }, attributes: ["id", "name", "slug"], order: [["name", "ASC"]] });
   res.json({ success: true, count: rows.length, data: rows });
+});
+
+// public availability check used by the signup form while typing a company name
+exports.checkCompany = asyncHandler(async (req, res) => {
+  const raw = String(req.query.name || "").trim();
+  const slug = slugify(raw);
+  const taken = raw ? await companyTaken(raw) : true;
+  res.json({ success: true, available: !taken, slug });
 });
 
 exports.createCompany = asyncHandler(async (req, res, next) => {

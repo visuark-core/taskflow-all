@@ -1,18 +1,21 @@
 // controllers/authController.js
-const { User, Company } = require('../models');
+const { User, Company, sequelize } = require('../models');
 const asyncHandler = require('../utils/asyncHandler');
 const ErrorResponse = require('../utils/errorResponse');
+const tenantManager = require('../services/tenantManager');
+const slugify = require('../utils/slugify');
 
-// Register user
+// Register user (the company field is a new company NAME to be created)
 exports.register = asyncHandler(async (req, res, next) => {
   console.log('Register request body:', req.body);
   const { name, email, password, company, role, department } = req.body;
-  if (!company) {
+  const companyName = String(company || '').trim();
+  if (!companyName) {
     return next(new ErrorResponse('Company name is required', 400));
   }
-  const companyRow = await Company.findOne({ where: { slug: company, status: 'active' } });
-  if (!companyRow) {
-    return next(new ErrorResponse('This company has not been provisioned. Ask your admin to create the workspace first.', 400));
+  const slug = slugify(companyName);
+  if (!slug) {
+    return next(new ErrorResponse('Please enter a valid company name', 400));
   }
 
   if (email === 'admin@visuark.com' && role !== 'admin') {
@@ -22,11 +25,34 @@ exports.register = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse('The role of ceo@visuark.com must be ceo', 400));
   }
 
+  const existing = await Company.count({ where: { slug } });
+  const nameTaken = await Company.count({
+    where: sequelize.where(sequelize.fn('lower', sequelize.col('name')), '=', companyName.trim().toLowerCase()),
+  });
+  if (existing + nameTaken > 0) {
+    return next(new ErrorResponse('This company name is already taken', 400));
+  }
+
+  const companyRow = await Company.create({
+    name: companyName,
+    slug,
+    dbName: `${tenantManager.TENANT_PREFIX}${slug}`,
+    status: 'provisioning'
+  });
+
+  try {
+    await tenantManager.provisionCompany(companyRow);
+  } catch (err) {
+    console.error('[register] provisioning failed for', slug, ':', err.message);
+    await companyRow.destroy();
+    return next(new ErrorResponse('Failed to set up your company workspace. Please try again.', 500));
+  }
+
   const user = await User.create({
     name,
     email,
     password,
-    company,
+    company: slug,
     role,
     department
   });
