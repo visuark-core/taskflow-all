@@ -33,6 +33,7 @@ const tenantRouter = asyncHandler(async (req, res, next) => {
   req.tenant = {
     slug: company.slug,
     dbName: company.dbName,
+    sequelize: entry.sequelize,
     models: entry.models,
     async getUsers(ids, attributes = ["id", "name", "avatar"]) {
       const unique = [...new Set((ids || []).filter(Boolean))];

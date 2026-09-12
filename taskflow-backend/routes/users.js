@@ -1,6 +1,6 @@
 const express = require('express');
 const { protect } = require('../middlewares/auth');
-const { tenantRouter } = require('../middlewares/tenantRouter');
+const tenantRouter = require('../middlewares/tenantRouter');
 const upload = require('../config/upload');
 const {
   getUsers,

@@ -43,14 +43,34 @@ function tenantConnectionString(dbName) {
   return ownerUrl.toString();
 }
 
+// After schema sync, tenant DBs keep only business tables. Drop FK
+// constraints referencing the global Users table (user rows live in the
+// primary DB; IDs become loose references enforced by the application).
+async function stripCrossDbUserRefs(seq) {
+  const refs = await seq.query(
+    `SELECT c.relname AS tbl, con.conname
+     FROM pg_constraint con
+     JOIN pg_class c ON c.oid = con.conrelid
+     WHERE con.contype = 'f' AND con.confrelid = '"Users"'::regclass`,
+    { type: QueryTypes.SELECT }
+  );
+  for (const r of refs) {
+    const tbl = String(r.tbl).replace(/"/g, '""');
+    const con = String(r.conname).replace(/"/g, '""');
+    await seq.query(`ALTER TABLE "${tbl}" DROP CONSTRAINT "${con}"`);
+  }
+  await seq.query('DROP TABLE IF EXISTS "Users" CASCADE');
+  await seq.query('DROP TABLE IF EXISTS "Companies"');
+}
+
 async function provisionCompany(company) {
   const dbName = `${TENANT_PREFIX}${company.slug}`;
   await createDatabase(dbName);
   const seq = makeSequelize(tenantConnectionString(dbName));
-  const models = build(seq);
-  for (const name of BUSINESS) {
-    await models[name].sync({ alter: true });
-  }
+  // Full schema sync so FK targets exist while tables are created.
+  build(seq);
+  await seq.sync({ alter: true });
+  await stripCrossDbUserRefs(seq);
   await seq.close();
   await company.update({ status: "active", dbName });
   return await company.reload();
@@ -72,10 +92,9 @@ function getCache(slug) {
 
 async function syncAllTenants() {
   const results = [];
-  for (const [slug, { models }] of instanceCache.entries()) {
-    for (const name of BUSINESS) {
-      await models[name].sync({ alter: true });
-    }
+  for (const [slug, { sequelize: seq }] of instanceCache.entries()) {
+    await seq.sync({ alter: true });
+    await stripCrossDbUserRefs(seq);
     results.push(slug);
   }
   return { synced: results };
@@ -84,4 +103,5 @@ async function syncAllTenants() {
 module.exports = {
   TENANT_PREFIX, BUSINESS, createDatabase, tenantConnectionString,
   provisionCompany, getModels, setCache, getCache, syncAllTenants,
+  stripCrossDbUserRefs,
 };
