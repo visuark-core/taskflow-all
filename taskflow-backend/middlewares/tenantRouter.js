@@ -47,9 +47,20 @@ const tenantRouter = asyncHandler(async (req, res, next) => {
 });
 
 // Company registry lookup (lazy require to avoid circular import at boot)
-function CompanyLookup(slug) {
+async function CompanyLookup(slug) {
   const { Company } = require("../models");
-  return Company.findOne({ where: { slug } });
+  const ensurePrimarySchema = require("../utils/ensurePrimarySchema");
+  try {
+    return await Company.findOne({ where: { slug } });
+  } catch (err) {
+    // On a fresh deployment the Companies table may not exist yet (serverless
+    // cold start raced the boot sync). Self-heal once, then let errors surface.
+    if (/relation "Companies" does not exist/i.test(err.message)) {
+      await ensurePrimarySchema();
+      return Company.findOne({ where: { slug } });
+    }
+    throw err;
+  }
 }
 
 module.exports = tenantRouter;

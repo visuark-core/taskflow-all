@@ -4,9 +4,11 @@ const asyncHandler = require('../utils/asyncHandler');
 const ErrorResponse = require('../utils/errorResponse');
 const tenantManager = require('../services/tenantManager');
 const slugify = require('../utils/slugify');
+const ensurePrimarySchema = require('../utils/ensurePrimarySchema');
 
 // Register user (the company field is a new company NAME to be created)
 exports.register = asyncHandler(async (req, res, next) => {
+  await ensurePrimarySchema();
   console.log('Register request body:', req.body);
   const { name, email, password, company, role, department } = req.body;
   const companyName = String(company || '').trim();

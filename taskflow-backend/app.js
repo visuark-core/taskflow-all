@@ -187,9 +187,11 @@ const connectPromise = (async () => {
     }
     // Ensure the primary schema (Users, Companies, ...) exists. On a fresh deployment
     // this creates tables the app depends on (e.g. "Companies" for tenant provisioning).
+    // Plain sync() emits CREATE TABLE IF NOT EXISTS: creates only missing tables and
+    // never alters or drops existing ones, so it is safe and fast on every cold start.
     try {
-      await sequelize.sync({ alter: true });
-      console.log('[Startup] Primary schema synced (alter: true)');
+      await sequelize.sync();
+      console.log('[Startup] Primary schema synced (create-if-missing)');
     } catch (err) {
       console.warn('[Startup] Primary schema sync failed:', err.message);
     }
