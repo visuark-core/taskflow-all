@@ -1,4 +1,4 @@
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, User, UserPlus } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext'; // Remove signup from destructuring below
@@ -9,6 +9,7 @@ import { registerUser } from '../../features/auth/authSlice';
 
 function SignupForm() {
   const dispatch = useAppDispatch();
+  const [companies, setCompanies] = useState<{ id: number; name: string; slug: string }[]>([]);
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [email, setEmail] = useState('');
@@ -19,13 +20,21 @@ function SignupForm() {
   const { isLoading } = useAuth();
   const navigate = useNavigate();
 
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+  useEffect(() => {
+    fetch(`${API_URL}/api/companies`)
+      .then((r) => r.json())
+      .then((d) => setCompanies(d.data || []))
+      .catch(() => setCompanies([]));
+  }, [API_URL]);
+
   const validateForm = () => {
     if (!name) {
       setFormError('Name is required');
       return false;
     }
     if (!company) {
-      setFormError('Company name is required');
+      setFormError('Select your company');
       return false;
     }
     if (!email) {
@@ -81,20 +90,27 @@ function SignupForm() {
   <div className="space-y-4">
         <div className="space-y-2">
           <label htmlFor="company" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Company name
+            Company
           </label>
           <div className="relative">
-            <input
+            <select
               id="company"
-              type="text"
               value={company}
               onChange={(e) => setCompany(e.target.value)}
-              placeholder="Your Company Name"
-              className="block w-full pl-3 pr-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm placeholder-gray-400 
-                focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500
-                bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-            />
+              className="block w-full pl-3 pr-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            >
+              <option value="">Select your company</option>
+              {companies.map((c) => (
+                <option key={c.id} value={c.slug}>{c.name}</option>
+              ))}
+            </select>
           </div>
+          {companies.length === 0 && (
+            <p className="text-xs text-amber-600 dark:text-amber-400">
+              No company workspaces available yet. Ask your admin to create one.
+            </p>
+          )}
         </div>
         <div className="space-y-2">
           <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
