@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { 
   Receipt, Plus, Mail, Phone, Pencil, Trash2, X, Search, 
   Briefcase, Handshake, Calendar, IndianRupee, Eye, Printer, 
@@ -8,6 +8,20 @@ import axios from 'axios';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../app/store';
 import { formatDate } from '../lib/utils';
+
+const dataUrlToFile = (dataUrl: string, name: string): File | null => {
+  try {
+    const arr = dataUrl.split(',');
+    const mime = arr[0]?.match(/:(.*?);/)?.[1] || 'image/png';
+    const bstr = atob(arr[1] || '');
+    const n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    for (let i = 0; i < n; i++) u8arr[i] = bstr.charCodeAt(i);
+    return new File([u8arr], `${name}.png`, { type: mime });
+  } catch (err) {
+    return null;
+  }
+};
 
 const formatDateSlash = (dateStr: string) => {
   if (!dateStr) return '';
@@ -181,6 +195,100 @@ export default function Billing() {
     setIsSettingsModalOpen(false);
   };
 
+  // Company billing assets (logo & signature) stored on the backend
+  const [billingAssets, setBillingAssets] = useState<{ logoUrl: string; signatureUrl: string }>({ logoUrl: '', signatureUrl: '' });
+  const [assetError, setAssetError] = useState<string | null>(null);
+  const [assetBusy, setAssetBusy] = useState<'logo' | 'signature' | null>(null);
+  const [assetPreview, setAssetPreview] = useState<{ logo: string | null; signature: string | null }>({ logo: null, signature: null });
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const signatureInputRef = useRef<HTMLInputElement>(null);
+
+  const fetchBillingAssets = async () => {
+    try {
+      const headers = { Authorization: token ? `Bearer ${token}` : '' };
+      const res = await axios.get(`${API_URL}/api/billing-settings`, { headers });
+      const data = res.data?.data;
+      if (data) {
+        setBillingAssets({
+          logoUrl: data.logoUrl || '',
+          signatureUrl: data.signatureUrl || ''
+        });
+      }
+    } catch (err) {
+      // Non-fatal: fall back to default logo / SVG signature
+    }
+  };
+
+  const handleAssetFileSelect = (type: 'logo' | 'signature') => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setAssetError(`${type === 'logo' ? 'Logo' : 'Signature'} must be an image file`);
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setAssetError('Image size must be less than 10MB');
+      return;
+    }
+
+    setAssetError(null);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setAssetPreview(prev => ({ ...prev, [type]: reader.result as string }));
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleAssetUpload = async (type: 'logo' | 'signature') => {
+    const preview = assetPreview[type];
+    if (!preview) return;
+
+    const fileToUpload = preview.startsWith('data:image') ? dataUrlToFile(preview, type) : null;
+    if (!fileToUpload) return;
+
+    setAssetError(null);
+    setAssetBusy(type);
+    try {
+      const headers = { Authorization: token ? `Bearer ${token}` : '' };
+      const formData = new FormData();
+      formData.append(type, fileToUpload);
+      const res = await axios.post(`${API_URL}/api/billing-settings/${type}`, formData, { headers });
+      if (type === 'logo') {
+        setBillingAssets(prev => ({ ...prev, logoUrl: res.data.logoUrl }));
+      } else {
+        setBillingAssets(prev => ({ ...prev, signatureUrl: res.data.signatureUrl }));
+      }
+      setAssetPreview(prev => ({ ...prev, [type]: null }));
+    } catch (err: any) {
+      setAssetError(err.response?.data?.error || err.response?.data?.message || `Failed to upload ${type}`);
+    } finally {
+      setAssetBusy(null);
+    }
+  };
+
+  const handleAssetRemove = async (type: 'logo' | 'signature') => {
+    const label = type === 'logo' ? 'logo' : 'signature';
+    if (!window.confirm(`Remove custom ${label} and use the default one?`)) return;
+    setAssetError(null);
+    setAssetBusy(type);
+    try {
+      const headers = { Authorization: token ? `Bearer ${token}` : '' };
+      await axios.delete(`${API_URL}/api/billing-settings/${type}`, { headers });
+      if (type === 'logo') {
+        setBillingAssets(prev => ({ ...prev, logoUrl: '' }));
+      } else {
+        setBillingAssets(prev => ({ ...prev, signatureUrl: '' }));
+      }
+      setAssetPreview(prev => ({ ...prev, [type]: null }));
+    } catch (err: any) {
+      setAssetError(err.response?.data?.error || err.response?.data?.message || `Failed to remove ${label}`);
+    } finally {
+      setAssetBusy(null);
+    }
+  };
+
   // Load Invoices, Services, Projects, Clients
   const fetchAllData = async () => {
     try {
@@ -209,6 +317,7 @@ export default function Billing() {
 
   useEffect(() => {
     fetchAllData();
+    fetchBillingAssets();
   }, [token]);
 
   // Invoice calculations helper
@@ -1191,7 +1300,7 @@ export default function Billing() {
       {/* --- Agency Bill Print Settings Modal --- */}
       {isSettingsModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in print:hidden">
-          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col border border-gray-200 dark:border-gray-800 animate-scale-up">
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col border border-gray-200 dark:border-gray-800 animate-scale-up">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/40">
               <div className="flex items-center gap-2">
                 <Settings className="h-5 w-5 text-primary-500" />
@@ -1209,6 +1318,158 @@ export default function Billing() {
 
             <form onSubmit={handleSaveSettings}>
               <div className="p-6 space-y-4">
+                {assetError && (
+                  <div className="rounded-lg bg-red-50 dark:bg-red-900/10 p-3 border border-red-200 dark:border-red-800">
+                    <p className="text-xs text-red-800 dark:text-red-300">{assetError}</p>
+                  </div>
+                )}
+
+                {/* Company Logo */}
+                <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/40 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-semibold text-gray-500 uppercase">
+                      Company Logo
+                    </label>
+                    <span className="text-[10px] text-gray-400">appears on printed invoices</span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="h-14 w-28 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center justify-center p-1.5 overflow-hidden">
+                      <img
+                        src={assetPreview.logo || billingAssets.logoUrl || '/logo.png'}
+                        alt="Company Logo"
+                        className="h-full w-full object-contain"
+                        onError={(e) => {
+                          if (!assetPreview.logo && !billingAssets.logoUrl) {
+                            e.currentTarget.src = '/logo.png';
+                          }
+                        }}
+                      />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <input
+                        ref={logoInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleAssetFileSelect('logo')}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => logoInputRef.current?.click()}
+                        className="btn border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-3 py-1.5 text-xs hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        Choose Image
+                      </button>
+                      {assetPreview.logo && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handleAssetUpload('logo')}
+                            disabled={assetBusy === 'logo'}
+                            className="btn btn-primary bg-primary-600 hover:bg-primary-500 text-white px-3 py-1.5 text-xs transition-colors disabled:opacity-50"
+                          >
+                            {assetBusy === 'logo' ? 'Uploading...' : 'Save Logo'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAssetPreview(prev => ({ ...prev, logo: null }))}
+                            className="text-xs font-semibold text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      )}
+                      {billingAssets.logoUrl && !assetPreview.logo && (
+                        <button
+                          type="button"
+                          onClick={() => handleAssetRemove('logo')}
+                          disabled={assetBusy === 'logo'}
+                          className="text-xs font-semibold text-red-655 hover:text-red-700 transition-colors"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Company Signature */}
+                <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/40 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-semibold text-gray-500 uppercase">
+                      Company Signature
+                    </label>
+                    <span className="text-[10px] text-gray-400">signs printed invoices</span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="h-14 w-28 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center justify-center p-1.5 overflow-hidden">
+                      {assetPreview.signature || billingAssets.signatureUrl ? (
+                        <img
+                          src={assetPreview.signature || billingAssets.signatureUrl}
+                          alt="Company Signature"
+                          className="h-full w-full object-contain"
+                        />
+                      ) : (
+                        <svg viewBox="0 0 200 60" className="h-10 w-24 text-gray-400">
+                          <path
+                            d="M 25 38 C 30 12, 38 10, 45 32 C 48 42, 45 48, 52 38 C 60 28, 62 18, 65 35 C 68 45, 75 32, 80 25 C 88 18, 92 38, 98 42 C 105 45, 110 32, 115 28 C 120 22, 125 35, 128 42 C 132 46, 138 32, 142 28 C 148 22, 155 35, 160 40"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <input
+                        ref={signatureInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleAssetFileSelect('signature')}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => signatureInputRef.current?.click()}
+                        className="btn border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-3 py-1.5 text-xs hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        Choose Image
+                      </button>
+                      {assetPreview.signature && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handleAssetUpload('signature')}
+                            disabled={assetBusy === 'signature'}
+                            className="btn btn-primary bg-primary-600 hover:bg-primary-500 text-white px-3 py-1.5 text-xs transition-colors disabled:opacity-50"
+                          >
+                            {assetBusy === 'signature' ? 'Uploading...' : 'Save Signature'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAssetPreview(prev => ({ ...prev, signature: null }))}
+                            className="text-xs font-semibold text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      )}
+                      {billingAssets.signatureUrl && !assetPreview.signature && (
+                        <button
+                          type="button"
+                          onClick={() => handleAssetRemove('signature')}
+                          disabled={assetBusy === 'signature'}
+                          className="text-xs font-semibold text-red-655 hover:text-red-700 transition-colors"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-xs font-semibold text-gray-555 uppercase mb-1">
                     UPI ID for Payments *
@@ -1387,11 +1648,13 @@ export default function Billing() {
               <div className="flex justify-between items-center pb-6 print:pb-3 border-b border-gray-100 dark:border-gray-800 print:border-gray-200">
                 <div>
                   <img 
-                    src="/logo.png" 
-                    alt="VISUARK Logo" 
+                    src={billingAssets.logoUrl || '/logo.png'} 
+                    alt="Company Logo" 
                     className="h-14 md:h-16 object-contain" 
                     onError={(e) => {
-                      e.currentTarget.style.display = 'none';
+                      if (!billingAssets.logoUrl) {
+                        e.currentTarget.style.display = 'none';
+                      }
                     }}
                   />
                 </div>
@@ -1558,7 +1821,14 @@ export default function Billing() {
 
                   {/* Cursive SVG Signature */}
                   <div className="mb-1">
-                    <svg viewBox="0 0 200 60" className="h-14 w-44 text-gray-800 dark:text-gray-200 print:text-black">
+                    {billingAssets.signatureUrl ? (
+                      <img
+                        src={billingAssets.signatureUrl}
+                        alt="Authorized Signature"
+                        className="h-14 w-44 object-contain"
+                      />
+                    ) : (
+                      <svg viewBox="0 0 200 60" className="h-14 w-44 text-gray-800 dark:text-gray-200 print:text-black">
                       <path 
                         d="M 25 38 C 30 12, 38 10, 45 32 C 48 42, 45 48, 52 38 C 60 28, 62 18, 65 35 C 68 45, 75 32, 80 25 C 88 18, 92 38, 98 42 C 105 45, 110 32, 115 28 C 120 22, 125 35, 128 42 C 132 46, 138 32, 142 28 C 148 22, 155 35, 160 40" 
                         fill="none" 
@@ -1575,6 +1845,7 @@ export default function Billing() {
                         strokeLinecap="round" 
                       />
                     </svg>
+                    )}
                   </div>
                   
                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1 text-center">

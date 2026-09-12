@@ -16,6 +16,7 @@ const Notification = require("./Notification");
 const SalaryDetail = require("./SalaryDetail");
 const SalaryPayout = require("./SalaryPayout");
 const Expense = require("./Expense");
+const CompanyBillingSetting = require("./CompanyBillingSetting");
 
 // Define Join Tables / Sub-models
 
@@ -180,6 +181,7 @@ module.exports = {
   SalaryDetail,
   SalaryPayout,
   Expense,
+  CompanyBillingSetting,
   ProjectMember,
   TeamMember,
   DepartmentMember,
