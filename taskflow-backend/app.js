@@ -178,10 +178,23 @@ app.use(errorHandler);
 const connectPromise = (async () => {
   try {
     const { sequelize } = require('./models');
-    await sequelize.query(`ALTER TYPE "enum_Users_role" ADD VALUE IF NOT EXISTS 'marketer';`);
-    console.log('[Startup] Role enum updated successfully (added marketer)');
+    // Best-effort: add 'marketer' to the role enum on an existing Users table.
+    try {
+      await sequelize.query(`ALTER TYPE "enum_Users_role" ADD VALUE IF NOT EXISTS 'marketer';`);
+      console.log('[Startup] Role enum updated successfully (added marketer)');
+    } catch (err) {
+      console.warn('[Startup] Could not alter enum type enum_Users_role to add marketer:', err.message);
+    }
+    // Ensure the primary schema (Users, Companies, ...) exists. On a fresh deployment
+    // this creates tables the app depends on (e.g. "Companies" for tenant provisioning).
+    try {
+      await sequelize.sync({ alter: true });
+      console.log('[Startup] Primary schema synced (alter: true)');
+    } catch (err) {
+      console.warn('[Startup] Primary schema sync failed:', err.message);
+    }
   } catch (err) {
-    console.warn('[Startup] Could not alter enum type enum_Users_role to add marketer:', err.message);
+    console.warn('[Startup] DB connect error:', err.message);
   }
   return true;
 })();
