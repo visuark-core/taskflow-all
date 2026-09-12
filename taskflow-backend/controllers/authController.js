@@ -1,5 +1,5 @@
 // controllers/authController.js
-const { User, Team } = require('../models');
+const { User, Team, Company } = require('../models');
 const asyncHandler = require('../utils/asyncHandler');
 const ErrorResponse = require('../utils/errorResponse');
 
@@ -9,6 +9,10 @@ exports.register = asyncHandler(async (req, res, next) => {
   const { name, email, password, company, role, department } = req.body;
   if (!company) {
     return next(new ErrorResponse('Company name is required', 400));
+  }
+  const companyRow = await Company.findOne({ where: { slug: company, status: 'active' } });
+  if (!companyRow) {
+    return next(new ErrorResponse('This company has not been provisioned. Ask your admin to create the workspace first.', 400));
   }
 
   if (email === 'admin@visuark.com' && role !== 'admin') {

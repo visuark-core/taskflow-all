@@ -23,6 +23,7 @@ const reportRoutes = require('./routes/reports');
 const chatRoutes = require('./routes/chat');
 const salaryRoutes = require('./routes/salaries');
 const billingSettingsRoutes = require('./routes/billingSettings');
+const companyRoutes = require('./routes/companies');
 
 const errorHandler = require('./middlewares/errorHandler');
 const { startCronJobs } = require('./utils/cronJobs');
@@ -141,6 +142,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/salaries', salaryRoutes);
 app.use('/api/billing-settings', billingSettingsRoutes);
+app.use('/api/companies', companyRoutes);
 
 // Temporary endpoint to trigger db sync on Vercel
 app.get('/api/db-sync', async (req, res) => {
