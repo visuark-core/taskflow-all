@@ -83,3 +83,12 @@
   from { transform: scale(0.95); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }
+
+/* Full-viewport fixed overlays must not inherit margin-top injected by
+   parent space-y-* wrappers (shifts the backdrop down, leaving the top
+   of the app uncovered). `!important` is required because Tailwind's
+   .space-y-* > :not([hidden]) ~ :not([hidden]) selector has higher
+   specificity than a regular margin utility. */
+.fixed.inset-0 {
+  margin: 0 !important;
+}
