@@ -73,7 +73,9 @@ const allowedOrigins = [
   'http://localhost:5000',
   'http://localhost:5173',
   'http://localhost:5174',
-  'https://remarkable-mandazi-a53c25.netlify.app'
+  'https://remarkable-mandazi-a53c25.netlify.app',
+  'https://taskflow.visuark.com',
+  'https://www.taskflow.visuark.com'
 ].filter(Boolean);
 
 app.use(cors({
