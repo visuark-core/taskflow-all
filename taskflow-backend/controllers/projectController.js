@@ -1,15 +1,15 @@
-const { Project, User, Team, Task, Activity, ProjectMember, Notification, Client, Service } = require('../models');
+const { User } = require('../models');
 const asyncHandler = require('../utils/asyncHandler');
 const ErrorResponse = require('../utils/errorResponse');
 const { Op } = require('sequelize');
 
 exports.getProjects = asyncHandler(async (req, res, next) => {
-  const userTeams = await Team.findAll({
-    include: [{ model: User, as: 'members' }]
-  });
-  
+  const { Team, Task, Project, ProjectMember, TeamMember, Client, Service } = req.tenant.models;
+  const userTeamRows = await TeamMember.findAll({ where: { UserId: req.user.id } });
+  const userTeamIds = new Set(userTeamRows.map(tm => tm.TeamId));
+  const userTeams = await Team.findAll({});
   const myTeamIds = userTeams
-    .filter(t => t.ownerId === req.user.id || t.members.some(m => m.id === req.user.id))
+    .filter(t => t.ownerId === req.user.id || userTeamIds.has(t.id))
     .map(t => t.id);
 
   const myTasks = await Task.findAll({
@@ -18,15 +18,25 @@ exports.getProjects = asyncHandler(async (req, res, next) => {
   });
   const myTaskProjectIds = [...new Set(myTasks.map(t => t.projectId).filter(id => id != null))];
 
+  const myMemberships = await ProjectMember.findAll({ where: { UserId: req.user.id } });
+  const memberProjectIds = new Set(myMemberships.map(m => m.ProjectId));
+
   const projects = await Project.findAll({
     include: [
-      { model: User, as: 'owner', attributes: ['id', 'name'] },
       { model: Team, attributes: ['id', 'name'] },
-      { model: User, as: 'members', attributes: ['id', 'name'] },
       { model: Client, as: 'client', attributes: ['id', 'name', 'company'] },
       { model: Service, as: 'service', attributes: ['id', 'name'] }
     ],
     order: [['createdAt', 'DESC']]
+  });
+
+  const pmRows = await ProjectMember.findAll({});
+  const memberIds = [...new Set(pmRows.map(m => m.UserId))];
+  const userMap = await req.tenant.getUsers([...projects.map(p => p.ownerId), ...memberIds]);
+  projects.forEach(p => {
+    p.setDataValue('owner', userMap[p.ownerId] || null);
+    const mids = pmRows.filter(m => m.ProjectId === p.id).map(m => m.UserId);
+    p.setDataValue('members', mids.map(id => userMap[id]).filter(Boolean));
   });
 
   const isAdminOrExecutive = ['admin', 'ceo', 'cfo', 'cto', 'cmo'].includes(req.user.role);
@@ -38,31 +48,25 @@ exports.getProjects = asyncHandler(async (req, res, next) => {
     });
   }
 
-  const userProjects = projects.filter(p => 
-    p.ownerId === req.user.id || 
-    p.members.some(m => m.id === req.user.id) ||
+  const userProjects = projects.filter(p =>
+    p.ownerId === req.user.id ||
+    memberProjectIds.has(p.id) ||
     (p.teamId && myTeamIds.includes(p.teamId)) ||
     myTaskProjectIds.includes(p.id)
   );
 
-  console.log(`[DEBUG getProjects] User ID: ${req.user.id}`);
-  console.log(`[DEBUG getProjects] My Team IDs:`, myTeamIds);
-  console.log(`[DEBUG getProjects] All Projects teamIds:`, projects.map(p => p.teamId));
-
-  res.status(200).json({ 
-    success: true, 
-    count: userProjects.length, 
-    data: userProjects,
-    debug: { myTeamIds, allProjectTeamIds: projects.map(p => p.teamId) } 
+  res.status(200).json({
+    success: true,
+    count: userProjects.length,
+    data: userProjects
   });
 });
 
 exports.getProject = asyncHandler(async (req, res, next) => {
+  const { Team, Task, Project, ProjectMember, TeamMember, Client, Service } = req.tenant.models;
   const project = await Project.findByPk(req.params.id, {
     include: [
-      { model: User, as: 'owner', attributes: ['id', 'name'] },
       { model: Team, attributes: ['id', 'name'] },
-      { model: User, as: 'members', attributes: ['id', 'name'] },
       { model: Client, as: 'client', attributes: ['id', 'name', 'company', 'email', 'phone'] },
       { model: Service, as: 'service', attributes: ['id', 'name', 'rate', 'rateType'] }
     ]
@@ -70,18 +74,23 @@ exports.getProject = asyncHandler(async (req, res, next) => {
 
   if (!project) return next(new ErrorResponse('Project not found', 404));
 
+  const pmRows = await ProjectMember.findAll({ where: { ProjectId: project.id } });
+  const userMap = await req.tenant.getUsers([project.ownerId, ...pmRows.map(m => m.UserId)]);
+
+  project.setDataValue('owner', userMap[project.ownerId] || null);
+  project.setDataValue('members', pmRows.map(m => userMap[m.UserId]).filter(Boolean));
+
   // Check access authorization
   const isOwner = project.ownerId === req.user.id;
   const isExecutive = ['admin', 'ceo', 'cfo', 'cto', 'cmo'].includes(req.user.role);
   const isMember = project.members && project.members.some(m => m.id === req.user.id);
-  
+
   let isTeamMember = false;
   if (project.teamId) {
-    const team = await Team.findByPk(project.teamId, {
-      include: [{ model: User, as: 'members', attributes: ['id'] }]
-    });
+    const team = await Team.findByPk(project.teamId);
     if (team) {
-      isTeamMember = team.ownerId === req.user.id || (team.members && team.members.some(m => m.id === req.user.id));
+      const tms = await TeamMember.findAll({ where: { TeamId: team.id } });
+      isTeamMember = team.ownerId === req.user.id || tms.some(tm => tm.UserId === req.user.id);
     }
   }
 
@@ -101,6 +110,7 @@ exports.getProject = asyncHandler(async (req, res, next) => {
 });
 
 exports.createProject = asyncHandler(async (req, res, next) => {
+  const { Project, Team, Activity, Notification } = req.tenant.models;
   const allowedRoles = ['admin', 'ceo', 'chief_manager', 'department_manager'];
   if (!allowedRoles.includes(req.user.role)) {
     return next(new ErrorResponse('Not authorized to create projects', 403));
@@ -159,6 +169,7 @@ exports.createProject = asyncHandler(async (req, res, next) => {
 });
 
 exports.updateProject = asyncHandler(async (req, res, next) => {
+  const { Team, Task, Project, ProjectMember } = req.tenant.models;
   const project = await Project.findByPk(req.params.id, {
     include: [{ model: Team }]
   });
@@ -199,6 +210,7 @@ exports.updateProject = asyncHandler(async (req, res, next) => {
 });
 
 exports.deleteProject = asyncHandler(async (req, res, next) => {
+  const { Project } = req.tenant.models;
   const project = await Project.findByPk(req.params.id);
   if (!project) return next(new ErrorResponse('Project not found', 404));
 
@@ -214,6 +226,7 @@ exports.deleteProject = asyncHandler(async (req, res, next) => {
 });
 
 exports.addMember = asyncHandler(async (req, res, next) => {
+  const { Project } = req.tenant.models;
   const allowedRoles = ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'chief_manager', 'department_manager'];
   if (!allowedRoles.includes(req.user.role)) {
     return next(new ErrorResponse('Only admins, executives, or managers can add members to a project', 403));
@@ -227,6 +240,7 @@ exports.addMember = asyncHandler(async (req, res, next) => {
 });
 
 exports.removeMember = asyncHandler(async (req, res, next) => {
+  const { Project } = req.tenant.models;
   const allowedRoles = ['admin', 'ceo', 'cfo', 'cto', 'cmo', 'chief_manager', 'department_manager'];
   if (!allowedRoles.includes(req.user.role)) {
     return next(new ErrorResponse('Only admins, executives, or managers can remove members from a project', 403));
@@ -240,6 +254,7 @@ exports.removeMember = asyncHandler(async (req, res, next) => {
 });
 
 exports.getProjectsByTeamMember = asyncHandler(async (req, res, next) => {
+  const { Team, Task, Project, ProjectMember, Client, Service } = req.tenant.models;
   const memberId = req.params.memberId;
   const memberTasks = await Task.findAll({
     where: { assigneeId: memberId },
@@ -249,17 +264,24 @@ exports.getProjectsByTeamMember = asyncHandler(async (req, res, next) => {
 
   const projects = await Project.findAll({
     include: [
-      { model: User, as: 'owner', attributes: ['id', 'name'] },
       { model: Team, attributes: ['id', 'name'] },
-      { model: User, as: 'members', attributes: ['id', 'name'] },
       { model: Client, as: 'client', attributes: ['id', 'name', 'company'] },
       { model: Service, as: 'service', attributes: ['id', 'name'] }
     ],
     order: [['createdAt', 'DESC']]
   });
 
-  const filtered = projects.filter(p => 
-    p.ownerId == memberId || 
+  const pmRows = await ProjectMember.findAll({});
+  const memberIds = [...new Set(pmRows.map(m => m.UserId))];
+  const userMap = await req.tenant.getUsers([...projects.map(p => p.ownerId), ...memberIds]);
+  projects.forEach(p => {
+    p.setDataValue('owner', userMap[p.ownerId] || null);
+    const mids = pmRows.filter(m => m.ProjectId === p.id).map(m => m.UserId);
+    p.setDataValue('members', mids.map(id => userMap[id]).filter(Boolean));
+  });
+
+  const filtered = projects.filter(p =>
+    p.ownerId == memberId ||
     p.members.some(m => m.id == memberId) ||
     memberTaskProjectIds.includes(p.id)
   );

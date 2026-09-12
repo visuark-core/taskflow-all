@@ -1,15 +1,15 @@
-const { Task, Project, User, Activity, TaskComment, TaskAttachment, TaskLabel } = require('../models');
 const asyncHandler = require('../utils/asyncHandler');
 const ErrorResponse = require('../utils/errorResponse');
 const { Op } = require('sequelize');
 
-const updateProjectStatus = async (projectId) => {
+const updateProjectStatus = async (models, projectId) => {
   if (!projectId) return;
+  const { Project, Task } = models;
   const project = await Project.findByPk(projectId);
   if (!project) return;
 
   const tasks = await Task.findAll({ where: { projectId } });
-  
+
   if (tasks.length === 0) return;
 
   const totalTasks = tasks.length;
@@ -30,33 +30,40 @@ const updateProjectStatus = async (projectId) => {
 };
 
 exports.getAllTasks = asyncHandler(async (req, res, next) => {
+  const { Task, Project, TaskLabel } = req.tenant.models;
   const tasks = await Task.findAll({
     include: [
-      { model: User, as: 'assignee', attributes: ['id', 'name', 'avatar'] },
       { model: Project, attributes: ['id', 'name'] },
       { model: TaskLabel, as: 'labels' }
     ],
     order: [['position', 'ASC'], ['createdAt', 'DESC']]
   });
+
+  const userMap = await req.tenant.getUsers(tasks.map(t => t.assigneeId));
+  tasks.forEach(t => t.setDataValue('assignee', userMap[t.assigneeId] || null));
 
   res.status(200).json({ success: true, count: tasks.length, data: tasks });
 });
 
 exports.getTasks = asyncHandler(async (req, res, next) => {
+  const { Task, Project, TaskLabel } = req.tenant.models;
   const tasks = await Task.findAll({
     where: { projectId: req.params.projectId },
     include: [
-      { model: User, as: 'assignee', attributes: ['id', 'name', 'avatar'] },
       { model: Project, attributes: ['id', 'name'] },
       { model: TaskLabel, as: 'labels' }
     ],
     order: [['position', 'ASC'], ['createdAt', 'DESC']]
   });
 
+  const userMap = await req.tenant.getUsers(tasks.map(t => t.assigneeId));
+  tasks.forEach(t => t.setDataValue('assignee', userMap[t.assigneeId] || null));
+
   res.status(200).json({ success: true, count: tasks.length, data: tasks });
 });
 
 exports.getMyTasks = asyncHandler(async (req, res, next) => {
+  const { Task, Project, TaskLabel } = req.tenant.models;
   const tasks = await Task.findAll({
     where: {
       [Op.or]: [
@@ -65,40 +72,53 @@ exports.getMyTasks = asyncHandler(async (req, res, next) => {
       ]
     },
     include: [
-      { model: User, as: 'assignee', attributes: ['id', 'name', 'avatar'] },
       { model: Project, attributes: ['id', 'name'] },
       { model: TaskLabel, as: 'labels' }
     ],
     order: [['position', 'ASC'], ['createdAt', 'DESC']]
   });
 
+  const userMap = await req.tenant.getUsers(tasks.map(t => t.assigneeId));
+  tasks.forEach(t => t.setDataValue('assignee', userMap[t.assigneeId] || null));
+
   res.status(200).json({ success: true, count: tasks.length, data: tasks });
 });
 
 exports.getTask = asyncHandler(async (req, res, next) => {
+  const { Task, Project, TaskComment, TaskAttachment, TaskLabel } = req.tenant.models;
   const task = await Task.findByPk(req.params.id, {
     include: [
-      { model: User, as: 'assignee', attributes: ['id', 'name', 'avatar'] },
-      { model: User, as: 'assignedBy', attributes: ['id', 'name', 'avatar'] },
       { model: Project, attributes: ['id', 'name'] },
-      { model: TaskComment, as: 'comments', include: [{ model: User, attributes: ['id', 'name', 'avatar'] }] },
+      { model: TaskComment, as: 'comments' },
       { model: TaskAttachment, as: 'attachments' },
       { model: TaskLabel, as: 'labels' }
     ]
   });
 
   if (!task) return next(new ErrorResponse('Task not found', 404));
+
+  const uidMap = await req.tenant.getUsers([
+    task.assigneeId,
+    task.assignedById,
+    ...(task.comments || []).map(c => c.userId)
+  ]);
+  task.setDataValue('assignee', uidMap[task.assigneeId] || null);
+  task.setDataValue('assignedBy', uidMap[task.assignedById] || null);
+  if (task.comments) {
+    task.comments.forEach(c => c.setDataValue('user', uidMap[c.userId] || null));
+  }
   res.status(200).json({ success: true, data: task });
 });
 
 exports.createTask = asyncHandler(async (req, res, next) => {
+  const { Task, Project, Activity } = req.tenant.models;
   const allowedRoles = ['admin', 'ceo', 'chief_manager', 'department_manager'];
   if (!allowedRoles.includes(req.user.role)) {
     return next(new ErrorResponse('Not authorized to create tasks', 403));
   }
 
   req.body.assignedById = req.user.id;
-  
+
   if (req.body.project) {
     req.body.projectId = req.body.project;
   }
@@ -128,12 +148,13 @@ exports.createTask = asyncHandler(async (req, res, next) => {
     description: `Created task ${task.title}`
   });
 
-  await updateProjectStatus(task.projectId);
+  await updateProjectStatus(req.tenant.models, task.projectId);
 
   res.status(201).json({ success: true, data: task });
 });
 
 exports.updateTask = asyncHandler(async (req, res, next) => {
+  const { Task, Project } = req.tenant.models;
   const task = await Task.findByPk(req.params.id);
   if (!task) return next(new ErrorResponse('Task not found', 404));
 
@@ -147,7 +168,7 @@ exports.updateTask = asyncHandler(async (req, res, next) => {
     if (unauthorizedKeys.length > 0) {
       return next(new ErrorResponse('Assignees are not authorized to edit core task details', 403));
     }
-    
+
     if (req.body.status && req.body.status.toLowerCase() === 'done') {
       return next(new ErrorResponse('Only managers and admins can mark a task as done', 403));
     }
@@ -174,12 +195,13 @@ exports.updateTask = asyncHandler(async (req, res, next) => {
 
   await task.update(req.body);
 
-  await updateProjectStatus(task.projectId);
+  await updateProjectStatus(req.tenant.models, task.projectId);
 
   res.status(200).json({ success: true, data: task });
 });
 
 exports.deleteTask = asyncHandler(async (req, res, next) => {
+  const { Task } = req.tenant.models;
   const task = await Task.findByPk(req.params.id);
   if (!task) return next(new ErrorResponse('Task not found', 404));
 
@@ -191,12 +213,13 @@ exports.deleteTask = asyncHandler(async (req, res, next) => {
   const projId = task.projectId;
   await task.destroy();
 
-  await updateProjectStatus(projId);
+  await updateProjectStatus(req.tenant.models, projId);
 
   res.status(200).json({ success: true, data: {} });
 });
 
 exports.addComment = asyncHandler(async (req, res, next) => {
+  const { TaskComment } = req.tenant.models;
   const comment = await TaskComment.create({
     text: req.body.text,
     taskId: req.params.id,
@@ -207,6 +230,7 @@ exports.addComment = asyncHandler(async (req, res, next) => {
 });
 
 exports.reorderTasks = asyncHandler(async (req, res, next) => {
+  const { Task } = req.tenant.models;
   const { taskId, newStatus, newPosition } = req.body;
   const task = await Task.findByPk(taskId);
   if (!task) return next(new ErrorResponse('Task not found', 404));
@@ -223,12 +247,13 @@ exports.reorderTasks = asyncHandler(async (req, res, next) => {
     position: newPosition || 0
   });
 
-  await updateProjectStatus(task.projectId);
+  await updateProjectStatus(req.tenant.models, task.projectId);
 
   res.status(200).json({ success: true, data: task });
 });
 
 exports.addAttachment = asyncHandler(async (req, res, next) => {
+  const { Task, TaskAttachment } = req.tenant.models;
   const cloudinary = require('../config/cloudinary');
   const fs = require('fs');
 
@@ -244,7 +269,7 @@ exports.addAttachment = asyncHandler(async (req, res, next) => {
 
   try {
     const result = await cloudinary.uploader.upload(req.file.path, {
-      folder: 'taskflow/attachments',
+      folder: `taskflow/${req.tenant.slug}/attachments`,
       resource_type: 'auto',
     });
 
@@ -267,6 +292,7 @@ exports.addAttachment = asyncHandler(async (req, res, next) => {
 });
 
 exports.deleteAttachment = asyncHandler(async (req, res, next) => {
+  const { TaskAttachment } = req.tenant.models;
   const attachmentId = req.params.attachmentId;
   const attachment = await TaskAttachment.findByPk(attachmentId);
 
