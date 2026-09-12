@@ -1,7 +1,6 @@
 const dotenv = require("dotenv");
 dotenv.config();
 const { sequelize, User, Company } = require("./models");
-const makeSequelize = require("./utils/makeSequelize");
 const tenantManager = require("./services/tenantManager");
 
 /* One-off migration for existing single-DB data.
@@ -130,7 +129,7 @@ async function main() {
     }
     await tenantManager.provisionCompany(company);
 
-    const tSeq = makeSequelize(tenantManager.tenantConnectionString(company.dbName));
+    const tSeq = tenantManager.makeTenantSequelize(slug);
     const tModels = require("./models").build(tSeq);
 
     const counts = {};

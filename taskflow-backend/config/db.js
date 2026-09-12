@@ -1,6 +1,8 @@
 const { Sequelize } = require("sequelize");
 const pg = require('pg'); // Force Vercel to bundle pg dialect
 const dotenv = require("dotenv");
+const normalizeSupabaseUri = require("../utils/normalizeSupabaseUri");
+
 dotenv.config();
 
 let connectionUri = process.env.DATABASE_URL || process.env.POSTGRES_URL;
@@ -9,29 +11,7 @@ let port = process.env.DB_PORT || "5432";
 let dbUser = process.env.DB_USER;
 
 // Automatically map IPv6 direct connection to the IPv4 pooler for this Supabase project
-if (connectionUri && !process.env.SYNC_DIRECT) {
-  const supabaseUriMatch = connectionUri.match(/@db\.([a-z0-9]+)\.supabase\.co/i);
-  if (supabaseUriMatch) {
-    const projectRef = supabaseUriMatch[1];
-    console.log(`Rewriting connection URL to use Supabase IPv4 Pooler for tenant: ${projectRef}`);
-    
-    // 1. Replace the host
-    connectionUri = connectionUri.replace(`db.${projectRef}.supabase.co`, "aws-0-ap-northeast-1.pooler.supabase.com");
-    
-    // 2. Change port 5432 to 6543 if present
-    connectionUri = connectionUri.replace(":5432", ":6543");
-    
-    // 3. Append the project reference suffix to the username in the connection URI
-    const urlMatch = connectionUri.match(/postgresql:\/\/([^:@]+)(:[^@]+)?@/);
-    if (urlMatch) {
-      const originalUser = urlMatch[1];
-      if (!originalUser.endsWith(`.${projectRef}`)) {
-        const replacementUser = `${originalUser}.${projectRef}`;
-        connectionUri = connectionUri.replace(`postgresql://${originalUser}`, `postgresql://${replacementUser}`);
-      }
-    }
-  }
-}
+connectionUri = normalizeSupabaseUri(connectionUri);
 
 if (host && !process.env.SYNC_DIRECT) {
   const supabaseMatch = host.match(/^db\.([a-z0-9]+)\.supabase\.co$/i);

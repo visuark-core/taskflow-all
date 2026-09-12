@@ -1,17 +1,16 @@
 const asyncHandler = require("../utils/asyncHandler");
 const ErrorResponse = require("../utils/errorResponse");
 const { User } = require("../models");
-const makeSequelize = require("../utils/makeSequelize");
 const { build } = require("../models");
-const { tenantConnectionString, setCache, getCache } = require("../services/tenantManager");
+const tenantManager = require("../services/tenantManager");
 
-async function resolveSequelize(slug, dbName) {
-  const cached = getCache(slug);
+async function resolveSequelize(slug) {
+  const cached = tenantManager.getCache(slug);
   if (cached) return cached;
-  const sequelize = makeSequelize(tenantConnectionString(dbName));
+  const sequelize = tenantManager.makeTenantSequelize(slug);
   const models = build(sequelize);
   const entry = { sequelize, models };
-  setCache(slug, entry);
+  tenantManager.setCache(slug, entry);
   return entry;
 }
 
@@ -28,7 +27,7 @@ const tenantRouter = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse("Your company workspace is still being provisioned. Try again shortly.", 503));
   }
 
-  const entry = await resolveSequelize(company.slug, company.dbName);
+  const entry = await resolveSequelize(company.slug);
 
   req.tenant = {
     slug: company.slug,

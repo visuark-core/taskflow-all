@@ -1,6 +1,7 @@
 const { Sequelize, QueryTypes } = require("sequelize");
 const { build } = require("../models");
 const makeSequelize = require("../utils/makeSequelize");
+const normalizeSupabaseUri = require("../utils/normalizeSupabaseUri");
 
 const TENANT_PREFIX = "taskflow_";
 const BUSINESS = [
@@ -12,8 +13,15 @@ const BUSINESS = [
 
 const instanceCache = new Map(); // slug -> { sequelize, models }
 
+function primaryDbUri() {
+  return normalizeSupabaseUri(process.env.DATABASE_URL || process.env.POSTGRES_URL);
+}
+
+// Connection used for DDL (CREATE SCHEMA, etc.) – close after use.
 function ownerConnection() {
-  return new Sequelize(process.env.TENANT_OWNER_DATABASE_URL, {
+  const uri = primaryDbUri();
+  if (!uri) throw new Error("DATABASE_URL is required for tenant provisioning");
+  return new Sequelize(uri, {
     dialect: "postgres",
     dialectModule: require("pg"),
     logging: false,
@@ -21,31 +29,34 @@ function ownerConnection() {
   });
 }
 
-async function createDatabase(dbName) {
-  const quoted = `"${dbName.replace(/"/g, '""')}"`;
+// Create a schema (not a database) in the primary DB.
+async function createSchema(slug) {
+  const schema = `${TENANT_PREFIX}${slug}`;
   const owner = ownerConnection();
   try {
-    const exists = await owner.query(
-      `SELECT 1 FROM pg_database WHERE datname = :name`,
-      { replacements: { name: dbName }, type: QueryTypes.SELECT }
-    );
-    if (exists.length === 0) {
-      await owner.query(`CREATE DATABASE ${quoted}`);
-    }
+    await owner.query(`CREATE SCHEMA IF NOT EXISTS "${schema}"`);
   } finally {
     await owner.close();
   }
 }
 
-function tenantConnectionString(dbName) {
-  const ownerUrl = new URL(process.env.TENANT_OWNER_DATABASE_URL);
-  ownerUrl.pathname = `/${dbName}`;
-  return ownerUrl.toString();
+// Sequelize instance bound to a tenant schema in the primary DB.
+// options.schema makes Sequelize qualify all DDL/queries to that schema.
+function makeTenantSequelize(slug) {
+  const schema = `${TENANT_PREFIX}${slug}`;
+  const uri = primaryDbUri();
+  if (!uri) throw new Error("DATABASE_URL is required");
+  const seq = makeSequelize(uri);
+  seq.options.schema = schema;
+  seq.addHook("afterConnect", async (connection) => {
+    await connection.query(`SET search_path TO "${schema}", public`);
+  });
+  return seq;
 }
 
-// After schema sync, tenant DBs keep only business tables. Drop FK
+// After schema sync, tenant schemas keep only business tables. Drop FK
 // constraints referencing the global Users table (user rows live in the
-// primary DB; IDs become loose references enforced by the application).
+// public schema; IDs become loose references enforced by the application).
 async function stripCrossDbUserRefs(seq) {
   const refs = await seq.query(
     `SELECT c.relname AS tbl, con.conname
@@ -64,15 +75,14 @@ async function stripCrossDbUserRefs(seq) {
 }
 
 async function provisionCompany(company) {
-  const dbName = `${TENANT_PREFIX}${company.slug}`;
-  await createDatabase(dbName);
-  const seq = makeSequelize(tenantConnectionString(dbName));
-  // Full schema sync so FK targets exist while tables are created.
+  const slug = company.slug;
+  await createSchema(slug);
+  const seq = makeTenantSequelize(slug);
   build(seq);
   await seq.sync({ alter: true });
   await stripCrossDbUserRefs(seq);
   await seq.close();
-  await company.update({ status: "active", dbName });
+  await company.update({ status: "active", dbName: `${TENANT_PREFIX}${slug}` });
   return await company.reload();
 }
 
@@ -92,16 +102,19 @@ function getCache(slug) {
 
 async function syncAllTenants() {
   const results = [];
-  for (const [slug, { sequelize: seq }] of instanceCache.entries()) {
+  for (const slug of instanceCache.keys()) {
+    const seq = makeTenantSequelize(slug);
+    build(seq);
     await seq.sync({ alter: true });
     await stripCrossDbUserRefs(seq);
+    await seq.close();
     results.push(slug);
   }
   return { synced: results };
 }
 
 module.exports = {
-  TENANT_PREFIX, BUSINESS, createDatabase, tenantConnectionString,
+  TENANT_PREFIX, BUSINESS, createSchema, makeTenantSequelize,
   provisionCompany, getModels, setCache, getCache, syncAllTenants,
   stripCrossDbUserRefs,
 };
