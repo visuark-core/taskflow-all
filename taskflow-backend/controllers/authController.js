@@ -1,5 +1,5 @@
 // controllers/authController.js
-const { User, Team, Company } = require('../models');
+const { User, Company } = require('../models');
 const asyncHandler = require('../utils/asyncHandler');
 const ErrorResponse = require('../utils/errorResponse');
 
@@ -63,13 +63,20 @@ exports.login = asyncHandler(async (req, res, next) => {
 
 // Get current logged in user
 exports.getMe = asyncHandler(async (req, res, next) => {
-  const user = await User.findByPk(req.user.id, {
-    include: [{ model: Team }]
-  });
+  const userJson = req.user.toJSON();
+  let teams = [];
+  if (req.tenant) {
+    const { Team, TeamMember } = req.tenant.models;
+    const memberships = await TeamMember.findAll({ where: { UserId: req.user.id } });
+    const teamIds = memberships.map((m) => m.TeamId);
+    if (teamIds.length > 0) {
+      teams = await Team.findAll({ where: { id: teamIds } });
+    }
+  }
 
   res.status(200).json({
     success: true,
-    data: user
+    data: { ...userJson, teams }
   });
 });
 

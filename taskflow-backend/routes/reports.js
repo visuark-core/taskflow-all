@@ -2,7 +2,7 @@
 const express = require('express');
 const { protect, authorize } = require('../middlewares/auth');
 const tenantRouter = require('../middlewares/tenantRouter');
-const { Project, User, Team, Task, Activity, Department, Invoice } = require('../models');
+const { User } = require('../models');
 const { Op } = require('sequelize');
 const asyncHandler = require('../utils/asyncHandler');
 
@@ -13,6 +13,7 @@ router.use(tenantRouter);
 
 // Get productivity trend (last 7 days)
 router.get('/productivity', asyncHandler(async (req, res) => {
+  const { Task } = req.tenant.models;
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
@@ -32,7 +33,7 @@ router.get('/productivity', asyncHandler(async (req, res) => {
     const d = new Date();
     d.setDate(d.getDate() - i);
     const dayName = days[d.getDay()];
-    
+
     const isSameDay = (date1, date2) => {
       const d1 = new Date(date1);
       const d2 = new Date(date2);
@@ -42,8 +43,8 @@ router.get('/productivity', asyncHandler(async (req, res) => {
     };
 
     const newTasks = tasks.filter(t => isSameDay(t.createdAt, d)).length;
-    const completedTasks = tasks.filter(t => 
-      isSameDay(t.updatedAt, d) && 
+    const completedTasks = tasks.filter(t =>
+      isSameDay(t.updatedAt, d) &&
       (t.status === 'done' || t.status === 'completed')
     ).length;
 
@@ -62,14 +63,13 @@ router.get('/productivity', asyncHandler(async (req, res) => {
 
 // Get dashboard stats
 router.get('/dashboard', asyncHandler(async (req, res) => {
-  const projects = await Project.findAll({
-    include: [
-      { model: User, as: 'owner', attributes: ['id', 'name'] },
-      { model: User, as: 'members', attributes: ['id', 'name'] }
-    ]
-  });
+  const { Project, ProjectMember, Task, Activity } = req.tenant.models;
+  const projects = await Project.findAll({});
 
-  const userProjects = projects.filter(p => p.ownerId === req.user.id || p.members?.some(m => m.id === req.user.id));
+  const myMemberships = await ProjectMember.findAll({ where: { UserId: req.user.id }, attributes: ["ProjectId"] });
+  const memberOf = new Set(myMemberships.map(m => m.ProjectId));
+
+  const userProjects = projects.filter(p => p.ownerId === req.user.id || memberOf.has(p.id));
   const projectIds = userProjects.map(p => p.id);
 
   const tasks = await Task.findAll({
@@ -99,12 +99,13 @@ router.get('/dashboard', asyncHandler(async (req, res) => {
       projectId: { [Op.in]: projectIds }
     },
     include: [
-      { model: User, attributes: ['id', 'name', 'email', 'avatar'] },
       { model: Project, attributes: ['id', 'name'] }
     ],
     order: [['createdAt', 'DESC']],
     limit: 10
   });
+  const activityUserMap = await req.tenant.getUsers(recentActivities.map(a => a.userId), ["id", "name", "email", "avatar"]);
+  recentActivities.forEach(a => a.setDataValue('user', activityUserMap[a.userId] || null));
 
   const upcomingDeadlines = await Task.findAll({
     where: {
@@ -113,12 +114,13 @@ router.get('/dashboard', asyncHandler(async (req, res) => {
       status: { [Op.notIn]: ['done', 'completed'] }
     },
     include: [
-      { model: User, as: 'assignee', attributes: ['id', 'name', 'email'] },
       { model: Project, attributes: ['id', 'name'] }
     ],
     order: [['dueDate', 'ASC']],
     limit: 10
   });
+  const assigneeMap = await req.tenant.getUsers(upcomingDeadlines.map(t => t.assigneeId), ["id", "name", "email"]);
+  upcomingDeadlines.forEach(t => t.setDataValue('assignee', assigneeMap[t.assigneeId] || null));
 
   res.status(200).json({
     success: true,
@@ -133,12 +135,8 @@ router.get('/dashboard', asyncHandler(async (req, res) => {
 
 // Get project report
 router.get('/project/:projectId', asyncHandler(async (req, res) => {
-  const project = await Project.findByPk(req.params.projectId, {
-    include: [
-      { model: User, as: 'owner', attributes: ['id', 'name', 'email'] },
-      { model: User, as: 'members', attributes: ['id', 'name', 'email'] }
-    ]
-  });
+  const { Project, ProjectMember, Task, Activity } = req.tenant.models;
+  const project = await Project.findByPk(req.params.projectId);
 
   if (!project) {
     return res.status(404).json({
@@ -146,6 +144,12 @@ router.get('/project/:projectId', asyncHandler(async (req, res) => {
       error: 'Project not found'
     });
   }
+
+  const memberships = await ProjectMember.findAll({ where: { ProjectId: project.id } });
+  const memberIds = memberships.map(m => m.UserId);
+  const allUsers = await req.tenant.getUsers([project.ownerId, ...memberIds], ["id", "name", "email"]);
+  project.setDataValue('owner', allUsers[project.ownerId] || null);
+  project.setDataValue('members', memberIds.map(id => allUsers[id]).filter(Boolean));
 
   const tasks = await Task.findAll({
     where: { projectId: req.params.projectId }
@@ -178,10 +182,11 @@ router.get('/project/:projectId', asyncHandler(async (req, res) => {
 
   const activities = await Activity.findAll({
     where: { projectId: req.params.projectId },
-    include: [{ model: User, attributes: ['id', 'name', 'email'] }],
     order: [['createdAt', 'DESC']],
     limit: 30
   });
+  const activityUsers = await req.tenant.getUsers(activities.map(a => a.userId), ["id", "name", "email"]);
+  activities.forEach(a => a.setDataValue('user', activityUsers[a.userId] || null));
 
   res.status(200).json({
     success: true,
@@ -202,6 +207,7 @@ router.get('/project/:projectId', asyncHandler(async (req, res) => {
 
 // Get user performance report
 router.get('/user/:userId', asyncHandler(async (req, res) => {
+  const { Task, Activity, Project } = req.tenant.models;
   const userId = req.params.userId === 'me' ? req.user.id : req.params.userId;
 
   const tasks = await Task.findAll({
@@ -253,10 +259,11 @@ router.get('/user/:userId', asyncHandler(async (req, res) => {
 
 // Get Company-wide CEO dashboard statistics
 router.get('/ceo', authorize('admin', 'ceo'), asyncHandler(async (req, res) => {
+  const { Department, Project, Task, Activity, Invoice, Team, DepartmentMember } = req.tenant.models;
   const departmentCount = await Department.count({});
   const projectCount = await Project.count({});
   const userCount = await User.count({ where: { id: { [Op.ne]: null } } });
-  
+
   const tasks = await Task.findAll({});
   const totalTasks = tasks.length;
 
@@ -278,18 +285,23 @@ router.get('/ceo', authorize('admin', 'ceo'), asyncHandler(async (req, res) => {
 
   const departments = await Department.findAll({
     include: [
-      { model: User, as: 'manager', attributes: ['id', 'name'] },
-      { model: Team, attributes: ['id'] },
-      { model: User, as: 'members', attributes: ['id'] }
+      { model: Team, attributes: ['id'] }
     ]
   });
+
+  const deptMembers = await DepartmentMember.findAll({});
+  const memberCountByDept = {};
+  for (const dm of deptMembers) {
+    memberCountByDept[dm.DepartmentId] = (memberCountByDept[dm.DepartmentId] || 0) + 1;
+  }
+  const managerMap = await req.tenant.getUsers(departments.map(d => d.managerId), ["id", "name"]);
 
   const departmentBreakdown = departments.map(dept => {
     return {
       id: dept.id,
       name: dept.name,
-      manager: dept.manager?.name || 'Unassigned',
-      memberCount: dept.members?.length || 0,
+      manager: (managerMap[dept.managerId] && managerMap[dept.managerId].name) || 'Unassigned',
+      memberCount: memberCountByDept[dept.id] || 0,
       teamCount: dept.Teams?.length || 0,
       status: dept.status || 'active'
     };
@@ -297,12 +309,13 @@ router.get('/ceo', authorize('admin', 'ceo'), asyncHandler(async (req, res) => {
 
   const recentActivities = await Activity.findAll({
     include: [
-      { model: User, attributes: ['id', 'name', 'email', 'avatar'] },
       { model: Project, attributes: ['id', 'name'] }
     ],
     order: [['createdAt', 'DESC']],
     limit: 20
   });
+  const activityUsers = await req.tenant.getUsers(recentActivities.map(a => a.userId), ["id", "name", "email", "avatar"]);
+  recentActivities.forEach(a => a.setDataValue('user', activityUsers[a.userId] || null));
 
   const paidInvoices = await Invoice.findAll({ where: { status: 'paid' } });
   const totalRevenue = paidInvoices.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
@@ -327,12 +340,8 @@ router.get('/ceo', authorize('admin', 'ceo'), asyncHandler(async (req, res) => {
 
 // Get Company-wide CFO dashboard statistics
 router.get('/cfo', authorize('admin', 'cfo'), asyncHandler(async (req, res) => {
-  const departments = await Department.findAll({
-    include: [
-      { model: User, as: 'manager', attributes: ['id', 'name'] },
-      { model: User, as: 'members', attributes: ['id'] }
-    ]
-  });
+  const { Department, Project, DepartmentMember } = req.tenant.models;
+  const departments = await Department.findAll({});
   const totalBudget = departments.reduce((sum, dept) => sum + (dept.budget || 0), 0);
 
   const projects = await Project.findAll({});
@@ -340,12 +349,19 @@ router.get('/cfo', authorize('admin', 'cfo'), asyncHandler(async (req, res) => {
 
   const userCount = await User.count({});
 
+  const deptMembers = await DepartmentMember.findAll({});
+  const memberCountByDept = {};
+  for (const dm of deptMembers) {
+    memberCountByDept[dm.DepartmentId] = (memberCountByDept[dm.DepartmentId] || 0) + 1;
+  }
+  const managerMap = await req.tenant.getUsers(departments.map(d => d.managerId), ["id", "name"]);
+
   const departmentBreakdown = departments.map(dept => ({
     id: dept.id,
     name: dept.name,
     budget: dept.budget || 0,
-    memberCount: dept.members?.length || 0,
-    manager: dept.manager?.name || 'Unassigned',
+    memberCount: memberCountByDept[dept.id] || 0,
+    manager: (managerMap[dept.managerId] && managerMap[dept.managerId].name) || 'Unassigned',
     status: dept.status || 'active'
   }));
 
@@ -382,6 +398,7 @@ router.get('/cfo', authorize('admin', 'cfo'), asyncHandler(async (req, res) => {
 
 // Get Company-wide CTO dashboard statistics
 router.get('/cto', authorize('admin', 'cto'), asyncHandler(async (req, res) => {
+  const { Department, DepartmentMember, Project, Team, Task } = req.tenant.models;
   const devsByRole = await User.count({ where: { role: 'developer' } });
   const testersByRole = await User.count({ where: { role: 'tester' } });
   const designersByRole = await User.count({ where: { role: 'designer' } });
@@ -396,16 +413,23 @@ router.get('/cto', authorize('admin', 'cto'), asyncHandler(async (req, res) => {
           { [Op.iLike]: '%soft%' }
         ]
       }
-    },
-    include: [{ model: User, as: 'members', attributes: ['id', 'role'] }]
+    }
   });
+
+  const deptMembers = await DepartmentMember.findAll({});
+  const memberIds = deptMembers.map(dm => dm.UserId).filter(Boolean);
+  const roleMap = await req.tenant.getUsers(memberIds, ["id", "role"]);
 
   let developersCount = devsByRole;
   let testersCount = testersByRole;
   let designersCount = designersByRole;
 
   techDepts.forEach(dept => {
-    dept.members?.forEach(m => {
+    const members = deptMembers
+      .filter(dm => dm.DepartmentId === dept.id)
+      .map(dm => roleMap[dm.UserId])
+      .filter(Boolean);
+    members.forEach(m => {
       if (m.role === 'developer') {
         // already counted
       } else if (m.role === 'tester') {
@@ -496,6 +520,7 @@ router.get('/cto', authorize('admin', 'cto'), asyncHandler(async (req, res) => {
 
 // Get Company-wide CMO dashboard statistics
 router.get('/cmo', authorize('admin', 'cmo'), asyncHandler(async (req, res) => {
+  const { Department, DepartmentMember, Project, Team, Task } = req.tenant.models;
   const explicitMarketers = await User.count({ where: { role: 'marketer' } });
 
   const mktDepts = await Department.findAll({
@@ -509,13 +534,20 @@ router.get('/cmo', authorize('admin', 'cmo'), asyncHandler(async (req, res) => {
           { [Op.iLike]: '%brand%' }
         ]
       }
-    },
-    include: [{ model: User, as: 'members', attributes: ['id', 'role'] }]
+    }
   });
+
+  const deptMembers = await DepartmentMember.findAll({});
+  const memberIds = deptMembers.map(dm => dm.UserId).filter(Boolean);
+  const roleMap = await req.tenant.getUsers(memberIds, ["id", "role"]);
 
   let marketingPersonnel = explicitMarketers;
   mktDepts.forEach(dept => {
-    dept.members?.forEach(m => {
+    const members = deptMembers
+      .filter(dm => dm.DepartmentId === dept.id)
+      .map(dm => roleMap[dm.UserId])
+      .filter(Boolean);
+    members.forEach(m => {
       if (m.role === 'marketer') {
         // already counted
       } else if (m.role === 'user') {

@@ -1,10 +1,8 @@
-const { CompanyBillingSetting } = require('../models');
 const asyncHandler = require('../utils/asyncHandler');
 
-const getCompanyKey = (user) => user.company || 'default';
-
-const getSettingsRecord = async (user) => {
-  const company = getCompanyKey(user);
+const getSettingsRecord = async (req) => {
+  const { CompanyBillingSetting } = req.tenant.models;
+  const company = req.tenant.slug;
   const [record] = await CompanyBillingSetting.findOrCreate({
     where: { company },
     defaults: { company }
@@ -16,7 +14,7 @@ const getSettingsRecord = async (user) => {
 // @route   GET /api/billing-settings
 // @access  Private (Finance authorized)
 exports.getBillingSettings = asyncHandler(async (req, res, next) => {
-  const record = await getSettingsRecord(req.user);
+  const record = await getSettingsRecord(req);
   res.status(200).json({
     success: true,
     data: {
@@ -39,10 +37,10 @@ exports.uploadBillingLogo = asyncHandler(async (req, res, next) => {
   }
 
   try {
-    const record = await getSettingsRecord(req.user);
+    const record = await getSettingsRecord(req);
 
     const result = await cloudinary.uploader.upload(req.file.path, {
-      folder: 'taskflow/billing-logos',
+      folder: `taskflow/${req.tenant.slug}/billing-logos`,
       resource_type: 'image'
     });
 
@@ -66,7 +64,7 @@ exports.uploadBillingLogo = asyncHandler(async (req, res, next) => {
 // @route   DELETE /api/billing-settings/logo
 // @access  Private (Finance authorized)
 exports.removeBillingLogo = asyncHandler(async (req, res, next) => {
-  const record = await getSettingsRecord(req.user);
+  const record = await getSettingsRecord(req);
   record.logoUrl = null;
   await record.save();
   res.status(200).json({ success: true, logoUrl: null });
@@ -84,10 +82,10 @@ exports.uploadBillingSignature = asyncHandler(async (req, res, next) => {
   }
 
   try {
-    const record = await getSettingsRecord(req.user);
+    const record = await getSettingsRecord(req);
 
     const result = await cloudinary.uploader.upload(req.file.path, {
-      folder: 'taskflow/billing-signatures',
+      folder: `taskflow/${req.tenant.slug}/billing-signatures`,
       resource_type: 'image'
     });
 
@@ -111,7 +109,7 @@ exports.uploadBillingSignature = asyncHandler(async (req, res, next) => {
 // @route   DELETE /api/billing-settings/signature
 // @access  Private (Finance authorized)
 exports.removeBillingSignature = asyncHandler(async (req, res, next) => {
-  const record = await getSettingsRecord(req.user);
+  const record = await getSettingsRecord(req);
   record.signatureUrl = null;
   await record.save();
   res.status(200).json({ success: true, signatureUrl: null });

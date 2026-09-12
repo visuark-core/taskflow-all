@@ -1,35 +1,27 @@
-const { User, SalaryDetail, SalaryPayout, Department } = require('../models');
+const { User } = require('../models');
 const asyncHandler = require('../utils/asyncHandler');
 const ErrorResponse = require('../utils/errorResponse');
 
-// @desc    Get all salary details (returns all users with their salary structure)
+// @desc    Get all salary details (all users with their salary structure)
 // @route   GET /api/salaries
 // @access  Private
 exports.getSalaryDetails = asyncHandler(async (req, res, next) => {
-  // Fetch all users and include their salary structure and department
-  const users = await User.findAll({
-    where: { company: req.user.company },
-    attributes: ['id', 'name', 'email', 'role', 'isActive'],
-    include: [
-      { 
-        model: SalaryDetail, 
-        as: 'salaryDetail',
-        attributes: ['id', 'baseSalary', 'bankName', 'accountNumber', 'ifscCode', 'panNumber', 'upiId', 'paymentMethod']
-      },
-      {
-        model: Department,
-        as: 'managedDepartment',
-        attributes: ['id', 'name']
-      }
-    ],
-    order: [['name', 'ASC']]
-  });
+  const { SalaryDetail, Department } = req.tenant.models;
+  const salaries = await SalaryDetail.findAll({});
+  const ids = salaries.map((s) => s.userId);
 
-  const mappedUsers = users.map(u => {
-    const userJson = u.toJSON();
+  const users = await req.tenant.getUsers(ids, ["id", "name", "email", "role", "isActive", "managedDepartmentId"]);
+  const depts = await Department.findAll({ attributes: ["id", "name"] });
+  const deptById = {};
+  for (const d of depts) deptById[d.id] = d.toJSON();
+
+  const mappedUsers = Object.values(users).map((u) => {
+    const detail = salaries.find((s) => s.userId === u.id);
     return {
-      ...userJson,
-      status: userJson.isActive ? 'active' : 'inactive'
+      ...u,
+      status: u.isActive ? 'active' : 'inactive',
+      salaryDetail: detail ? detail.toJSON() : null,
+      managedDepartment: u.managedDepartmentId ? deptById[u.managedDepartmentId] || null : null
     };
   });
 
@@ -44,28 +36,29 @@ exports.getSalaryDetails = asyncHandler(async (req, res, next) => {
 // @route   POST /api/salaries/detail
 // @access  Private
 exports.upsertSalaryDetail = asyncHandler(async (req, res, next) => {
-  const { 
-    userId, 
-    baseSalary, 
-    bankName, 
-    accountNumber, 
-    ifscCode, 
-    panNumber, 
-    upiId, 
-    paymentMethod 
+  const { SalaryDetail } = req.tenant.models;
+  const {
+    userId,
+    baseSalary,
+    bankName,
+    accountNumber,
+    ifscCode,
+    panNumber,
+    upiId,
+    paymentMethod
   } = req.body;
 
   if (!userId) {
     return next(new ErrorResponse('User ID is required', 400));
   }
 
-  // Check if user exists
+  // Check if user exists (global Users table)
   const user = await User.findByPk(userId);
   if (!user) {
     return next(new ErrorResponse('User not found', 404));
   }
 
-  // Upsert salary details
+  // Upsert salary details in the tenant DB
   const [salaryDetail, created] = await SalaryDetail.findOrCreate({
     where: { userId },
     defaults: {
@@ -102,6 +95,7 @@ exports.upsertSalaryDetail = asyncHandler(async (req, res, next) => {
 // @route   GET /api/salaries/payouts
 // @access  Private
 exports.getPayouts = asyncHandler(async (req, res, next) => {
+  const { SalaryPayout } = req.tenant.models;
   const { month, status } = req.query;
   const whereClause = {};
 
@@ -110,22 +104,16 @@ exports.getPayouts = asyncHandler(async (req, res, next) => {
 
   const payouts = await SalaryPayout.findAll({
     where: whereClause,
-    include: [
-      {
-        model: User,
-        as: 'user',
-        where: { company: req.user.company },
-        required: true,
-        attributes: ['id', 'name', 'email', 'role']
-      }
-    ],
     order: [['month', 'DESC'], ['payoutDate', 'DESC']]
   });
 
+  const userMap = await req.tenant.getUsers(payouts.map((p) => p.userId), ["id", "name", "email", "role"]);
+  const data = payouts.map((p) => ({ ...p.toJSON(), user: userMap[p.userId] || null }));
+
   res.status(200).json({
     success: true,
-    count: payouts.length,
-    data: payouts
+    count: data.length,
+    data
   });
 });
 
@@ -133,28 +121,29 @@ exports.getPayouts = asyncHandler(async (req, res, next) => {
 // @route   POST /api/salaries/payouts
 // @access  Private
 exports.createPayout = asyncHandler(async (req, res, next) => {
-  const { 
-    userId, 
-    month, 
-    amountPaid, 
-    payoutDate, 
-    status, 
-    transactionId, 
-    paymentMethod, 
-    notes 
+  const { SalaryPayout } = req.tenant.models;
+  const {
+    userId,
+    month,
+    amountPaid,
+    payoutDate,
+    status,
+    transactionId,
+    paymentMethod,
+    notes
   } = req.body;
 
   if (!userId || !month || amountPaid === undefined) {
     return next(new ErrorResponse('User ID, month, and amount paid are required', 400));
   }
 
-  // Check if user exists
+  // Check if user exists (global Users table)
   const user = await User.findByPk(userId);
   if (!user) {
     return next(new ErrorResponse('User not found', 404));
   }
 
-  // Create payout
+  // Create payout in the tenant DB
   const payout = await SalaryPayout.create({
     userId,
     month,
@@ -166,19 +155,13 @@ exports.createPayout = asyncHandler(async (req, res, next) => {
     notes: notes || null
   });
 
-  const fullPayout = await SalaryPayout.findByPk(payout.id, {
-    include: [
-      {
-        model: User,
-        as: 'user',
-        attributes: ['id', 'name', 'email', 'role']
-      }
-    ]
-  });
+  const fullPayout = await SalaryPayout.findByPk(payout.id);
+  const userMap = await req.tenant.getUsers([fullPayout.userId], ["id", "name", "email", "role"]);
+  const data = { ...fullPayout.toJSON(), user: userMap[fullPayout.userId] || null };
 
   res.status(201).json({
     success: true,
-    data: fullPayout
+    data
   });
 });
 
@@ -186,13 +169,14 @@ exports.createPayout = asyncHandler(async (req, res, next) => {
 // @route   PUT /api/salaries/payouts/:id
 // @access  Private
 exports.updatePayout = asyncHandler(async (req, res, next) => {
-  const { 
+  const { SalaryPayout } = req.tenant.models;
+  const {
     amountPaid,
-    payoutDate, 
-    status, 
-    transactionId, 
-    paymentMethod, 
-    notes 
+    payoutDate,
+    status,
+    transactionId,
+    paymentMethod,
+    notes
   } = req.body;
 
   let payout = await SalaryPayout.findByPk(req.params.id);
@@ -210,19 +194,13 @@ exports.updatePayout = asyncHandler(async (req, res, next) => {
     notes: notes !== undefined ? notes : payout.notes
   });
 
-  const fullPayout = await SalaryPayout.findByPk(payout.id, {
-    include: [
-      {
-        model: User,
-        as: 'user',
-        attributes: ['id', 'name', 'email', 'role']
-      }
-    ]
-  });
+  const fullPayout = await SalaryPayout.findByPk(payout.id);
+  const userMap = await req.tenant.getUsers([fullPayout.userId], ["id", "name", "email", "role"]);
+  const data = { ...fullPayout.toJSON(), user: userMap[fullPayout.userId] || null };
 
   res.status(200).json({
     success: true,
-    data: fullPayout
+    data
   });
 });
 
@@ -230,6 +208,7 @@ exports.updatePayout = asyncHandler(async (req, res, next) => {
 // @route   DELETE /api/salaries/payouts/:id
 // @access  Private
 exports.deletePayout = asyncHandler(async (req, res, next) => {
+  const { SalaryPayout } = req.tenant.models;
   const payout = await SalaryPayout.findByPk(req.params.id);
 
   if (!payout) {

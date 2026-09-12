@@ -2,7 +2,6 @@
 const express = require('express');
 const { protect } = require('../middlewares/auth');
 const tenantRouter = require('../middlewares/tenantRouter');
-const { Notification, Project, Task } = require('../models');
 const asyncHandler = require('../utils/asyncHandler');
 
 const router = express.Router();
@@ -12,6 +11,7 @@ router.use(tenantRouter);
 
 // Get user notifications
 router.get('/', asyncHandler(async (req, res) => {
+  const { Notification, Project, Task } = req.tenant.models;
   const notifications = await Notification.findAll({
     where: { recipientId: req.user.id },
     include: [
@@ -34,6 +34,7 @@ router.get('/', asyncHandler(async (req, res) => {
 
 // Mark notification as read
 router.put('/:id/read', asyncHandler(async (req, res) => {
+  const { Notification } = req.tenant.models;
   const notification = await Notification.findOne({
     where: {
       id: req.params.id,
@@ -58,6 +59,7 @@ router.put('/:id/read', asyncHandler(async (req, res) => {
 
 // Mark all notifications as read
 router.put('/read-all', asyncHandler(async (req, res) => {
+  const { Notification } = req.tenant.models;
   await Notification.update(
     { isRead: true },
     { where: { recipientId: req.user.id, isRead: false } }
@@ -71,6 +73,7 @@ router.put('/read-all', asyncHandler(async (req, res) => {
 
 // Delete notification
 router.delete('/:id', asyncHandler(async (req, res) => {
+  const { Notification } = req.tenant.models;
   const notification = await Notification.findOne({
     where: {
       id: req.params.id,
@@ -95,6 +98,7 @@ router.delete('/:id', asyncHandler(async (req, res) => {
 
 // Clear all notifications
 router.delete('/', asyncHandler(async (req, res) => {
+  const { Notification } = req.tenant.models;
   await Notification.destroy({ where: { recipientId: req.user.id } });
 
   res.status(200).json({
@@ -104,4 +108,3 @@ router.delete('/', asyncHandler(async (req, res) => {
 }));
 
 module.exports = router;
-
