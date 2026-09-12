@@ -48,10 +48,6 @@ function SignupForm() {
       setFormError('Company name is required');
       return false;
     }
-    if (companyAvailable.status !== 'available') {
-      setFormError('This company name is already taken');
-      return false;
-    }
     if (!email) {
       setFormError('Email is required');
       return false;
