@@ -111,7 +111,7 @@ router.get('/dashboard', asyncHandler(async (req, res) => {
     where: {
       projectId: { [Op.in]: projectIds },
       dueDate: { [Op.gte]: new Date() },
-      status: { [Op.notIn]: ['done', 'completed'] }
+      status: { [Op.notIn]: ['done'] }
     },
     include: [
       { model: Project, attributes: ['id', 'name'] }
