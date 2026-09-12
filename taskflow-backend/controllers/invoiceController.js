@@ -1,4 +1,3 @@
-const { Invoice, InvoiceItem, Project, Client, sequelize } = require('../models');
 const asyncHandler = require('../utils/asyncHandler');
 const ErrorResponse = require('../utils/errorResponse');
 
@@ -6,6 +5,7 @@ const ErrorResponse = require('../utils/errorResponse');
 // @route   GET /api/invoices
 // @access  Private
 exports.getInvoices = asyncHandler(async (req, res, next) => {
+  const { Invoice, InvoiceItem, Project, Client } = req.tenant.models;
   const { projectId, clientId, status } = req.query;
   const whereClause = {};
 
@@ -34,6 +34,7 @@ exports.getInvoices = asyncHandler(async (req, res, next) => {
 // @route   GET /api/invoices/:id
 // @access  Private
 exports.getInvoice = asyncHandler(async (req, res, next) => {
+  const { Invoice, InvoiceItem, Project, Client } = req.tenant.models;
   const invoice = await Invoice.findByPk(req.params.id, {
     include: [
       { model: Project, as: 'project', attributes: ['id', 'name', 'description', 'startDate', 'endDate'] },
@@ -56,16 +57,17 @@ exports.getInvoice = asyncHandler(async (req, res, next) => {
 // @route   POST /api/invoices
 // @access  Private (Admin/Manager/Executive)
 exports.createInvoice = asyncHandler(async (req, res, next) => {
-  const { 
-    invoiceNumber, 
-    issueDate, 
-    dueDate, 
-    projectId, 
-    clientId, 
-    taxRate, 
-    discount, 
+  const { Invoice, InvoiceItem, Project, Client } = req.tenant.models;
+  const {
+    invoiceNumber,
+    issueDate,
+    dueDate,
+    projectId,
+    clientId,
+    taxRate,
+    discount,
     notes,
-    items 
+    items
   } = req.body;
 
   if (!invoiceNumber || !dueDate || !projectId || !clientId) {
@@ -103,7 +105,7 @@ exports.createInvoice = asyncHandler(async (req, res, next) => {
   const discountAmt = parseFloat(discount) || 0;
   const totalAmount = Math.max(0, subtotal + tax - discountAmt);
 
-  const t = await sequelize.transaction();
+  const t = await req.tenant.sequelize.transaction();
 
   try {
     const invoice = await Invoice.create({
@@ -152,23 +154,24 @@ exports.createInvoice = asyncHandler(async (req, res, next) => {
 // @route   PUT /api/invoices/:id
 // @access  Private (Admin/Manager/Executive)
 exports.updateInvoice = asyncHandler(async (req, res, next) => {
+  const { Invoice, InvoiceItem, Project, Client } = req.tenant.models;
   let invoice = await Invoice.findByPk(req.params.id);
 
   if (!invoice) {
     return next(new ErrorResponse('Invoice not found', 404));
   }
 
-  const { 
+  const {
     invoiceNumber,
-    issueDate, 
-    dueDate, 
-    projectId, 
-    clientId, 
-    taxRate, 
-    discount, 
+    issueDate,
+    dueDate,
+    projectId,
+    clientId,
+    taxRate,
+    discount,
     status,
     notes,
-    items 
+    items
   } = req.body;
 
   // Calculate totals if items are provided
@@ -212,7 +215,7 @@ exports.updateInvoice = asyncHandler(async (req, res, next) => {
     totalAmount = Math.max(0, subtotal + tax - discountAmt);
   }
 
-  const t = await sequelize.transaction();
+  const t = await req.tenant.sequelize.transaction();
 
   try {
     await invoice.update({
@@ -259,6 +262,7 @@ exports.updateInvoice = asyncHandler(async (req, res, next) => {
 // @route   DELETE /api/invoices/:id
 // @access  Private (Admin/Manager/Executive)
 exports.deleteInvoice = asyncHandler(async (req, res, next) => {
+  const { Invoice } = req.tenant.models;
   const invoice = await Invoice.findByPk(req.params.id);
 
   if (!invoice) {

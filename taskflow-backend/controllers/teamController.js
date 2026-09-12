@@ -1,21 +1,37 @@
-const { Team, User, Project, Activity, Department, TeamMember } = require('../models');
 const asyncHandler = require('../utils/asyncHandler');
 const ErrorResponse = require('../utils/errorResponse');
-const { Op } = require('sequelize');
+
+const ATTRS = ['id', 'name', 'email', 'avatar'];
 
 // Get all teams
 exports.getTeams = asyncHandler(async (req, res, next) => {
+  const { Team, Department, Project, TeamMember } = req.tenant.models;
   const teams = await Team.findAll({
     include: [
-      { model: User, as: 'owner', attributes: ['id', 'name', 'email', 'avatar'] },
-      { model: Department, include: [{ model: User, as: 'departmentManager' }] },
-      { model: User, as: 'members', attributes: ['id', 'name', 'email', 'avatar'] }
+      { model: Department },
+      { model: Project, attributes: ['id', 'name', 'status', 'progress', 'priority', 'endDate'] }
     ],
     order: [['createdAt', 'DESC']]
   });
 
+  const tmRows = await TeamMember.findAll({});
+  const userIds = [
+    ...teams.map(t => t.ownerId),
+    ...tmRows.map(m => m.UserId),
+    ...teams.map(t => t.Department && t.Department.managerId)
+  ];
+  const userMap = await req.tenant.getUsers(userIds, ATTRS);
+  teams.forEach(team => {
+    team.setDataValue('owner', userMap[team.ownerId] || null);
+    const mids = tmRows.filter(m => m.TeamId === team.id).map(m => m.UserId);
+    team.setDataValue('members', mids.map(id => userMap[id]).filter(Boolean));
+    if (team.Department) {
+      team.Department.setDataValue('departmentManager', userMap[team.Department.managerId] || null);
+    }
+  });
+
   // Filter for teams user owns or is a member of
-  const userTeams = teams.filter(team => 
+  const userTeams = teams.filter(team =>
     team.ownerId === req.user.id || team.members.some(m => m.id === req.user.id)
   );
 
@@ -28,6 +44,7 @@ exports.getTeams = asyncHandler(async (req, res, next) => {
 
 // Get teams in a specific department
 exports.getTeamsByDepartment = asyncHandler(async (req, res, next) => {
+  const { Team, Project, Department, TeamMember } = req.tenant.models;
   const { departmentId } = req.params;
 
   const department = await Department.findByPk(departmentId);
@@ -45,11 +62,18 @@ exports.getTeamsByDepartment = asyncHandler(async (req, res, next) => {
   const teams = await Team.findAll({
     where: { departmentId },
     include: [
-      { model: User, as: 'owner', attributes: ['id', 'name', 'email', 'avatar'] },
-      { model: User, as: 'members', attributes: ['id', 'name', 'email', 'avatar'] },
       { model: Project, attributes: ['id', 'name', 'status', 'progress', 'priority', 'endDate'] }
     ],
     order: [['createdAt', 'DESC']]
+  });
+
+  const tmRows = await TeamMember.findAll({ where: { TeamId: teams.map(t => t.id) } });
+  const userIds = [...teams.map(t => t.ownerId), ...tmRows.map(m => m.UserId)];
+  const userMap = await req.tenant.getUsers(userIds, ATTRS);
+  teams.forEach(team => {
+    team.setDataValue('owner', userMap[team.ownerId] || null);
+    const mids = tmRows.filter(m => m.TeamId === team.id).map(m => m.UserId);
+    team.setDataValue('members', mids.map(id => userMap[id]).filter(Boolean));
   });
 
   res.status(200).json({
@@ -61,11 +85,10 @@ exports.getTeamsByDepartment = asyncHandler(async (req, res, next) => {
 
 // Get single team
 exports.getTeam = asyncHandler(async (req, res, next) => {
+  const { Team, Department, Project, TeamMember } = req.tenant.models;
   const team = await Team.findByPk(req.params.id, {
     include: [
-      { model: User, as: 'owner', attributes: ['id', 'name', 'email', 'avatar'] },
-      { model: Department, include: [{ model: User, as: 'departmentManager' }] },
-      { model: User, as: 'members', attributes: ['id', 'name', 'email', 'avatar'] },
+      { model: Department },
       { model: Project, attributes: ['id', 'name', 'status', 'progress'] }
     ]
   });
@@ -74,8 +97,19 @@ exports.getTeam = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse(`Team not found with id of ${req.params.id}`, 404));
   }
 
+  const tmRows = await TeamMember.findAll({ where: { TeamId: team.id } });
+  const userMap = await req.tenant.getUsers(
+    [team.ownerId, ...tmRows.map(m => m.UserId), team.Department && team.Department.managerId],
+    ATTRS
+  );
+  team.setDataValue('owner', userMap[team.ownerId] || null);
+  team.setDataValue('members', tmRows.map(m => userMap[m.UserId]).filter(Boolean));
+  if (team.Department) {
+    team.Department.setDataValue('departmentManager', userMap[team.Department.managerId] || null);
+  }
+
   const isAdminOrExecutive = ['admin', 'ceo', 'cfo', 'cto'].includes(req.user.role);
-  const hasAccess = team.ownerId === req.user.id || 
+  const hasAccess = team.ownerId === req.user.id ||
                    team.members.some(member => member.id === req.user.id) ||
                    isAdminOrExecutive;
 
@@ -91,6 +125,7 @@ exports.getTeam = asyncHandler(async (req, res, next) => {
 
 // Create team
 exports.createTeam = asyncHandler(async (req, res, next) => {
+  const { Team, Department, Activity } = req.tenant.models;
   const { departmentId, name, description, settings } = req.body;
 
   if (departmentId) {
@@ -114,10 +149,10 @@ exports.createTeam = asyncHandler(async (req, res, next) => {
     departmentId,
     ownerId: req.user.id
   });
-  
+
   team.generateInviteCode();
   await team.save();
-  
+
   await team.addMember(req.user.id, { through: { role: 'admin' } });
 
   await Activity.create({
@@ -137,14 +172,16 @@ exports.createTeam = asyncHandler(async (req, res, next) => {
 
 // Update team
 exports.updateTeam = asyncHandler(async (req, res, next) => {
-  const team = await Team.findByPk(req.params.id, { include: [{ model: User, as: 'members' }] });
+  const { Team, Department, TeamMember } = req.tenant.models;
+  const team = await Team.findByPk(req.params.id);
 
   if (!team) {
     return next(new ErrorResponse(`Team not found with id of ${req.params.id}`, 404));
   }
 
-  const isAdminOrOwner = team.ownerId === req.user.id || 
-    team.members.some(m => m.id === req.user.id && m.TeamMember.role === 'admin');
+  const myMembership = await TeamMember.findOne({ where: { TeamId: team.id, UserId: req.user.id } });
+  const isAdminOrOwner = team.ownerId === req.user.id ||
+    (myMembership && myMembership.role === 'admin');
 
   if (!isAdminOrOwner) {
     return next(new ErrorResponse('Not authorized to update this team', 403));
@@ -166,6 +203,7 @@ exports.updateTeam = asyncHandler(async (req, res, next) => {
 
 // Delete team
 exports.deleteTeam = asyncHandler(async (req, res, next) => {
+  const { Team } = req.tenant.models;
   const team = await Team.findByPk(req.params.id);
 
   if (!team) {
@@ -186,15 +224,16 @@ exports.deleteTeam = asyncHandler(async (req, res, next) => {
 
 // Join team
 exports.joinTeam = asyncHandler(async (req, res, next) => {
+  const { Team, Activity, TeamMember } = req.tenant.models;
   const { inviteCode } = req.body;
-  const team = await Team.findOne({ where: { inviteCode }, include: [{ model: User, as: 'members' }] });
+  const team = await Team.findOne({ where: { inviteCode } });
 
   if (!team) {
     return next(new ErrorResponse('Invalid invite code', 400));
   }
 
-  const isMember = team.members.some(member => member.id === req.user.id);
-  if (isMember) {
+  const existing = await TeamMember.findOne({ where: { TeamId: team.id, UserId: req.user.id } });
+  if (existing) {
     return next(new ErrorResponse('Already a member of this team', 400));
   }
 
@@ -215,6 +254,7 @@ exports.joinTeam = asyncHandler(async (req, res, next) => {
 
 // Leave team
 exports.leaveTeam = asyncHandler(async (req, res, next) => {
+  const { Team } = req.tenant.models;
   const team = await Team.findByPk(req.params.id);
 
   if (!team) {
@@ -235,21 +275,23 @@ exports.leaveTeam = asyncHandler(async (req, res, next) => {
 
 // Add member
 exports.addMember = asyncHandler(async (req, res, next) => {
-  const team = await Team.findByPk(req.params.id, { include: [{ model: User, as: 'members' }] });
+  const { Team, TeamMember } = req.tenant.models;
+  const team = await Team.findByPk(req.params.id);
 
   if (!team) {
     return next(new ErrorResponse(`Team not found with id of ${req.params.id}`, 404));
   }
 
-  const isAuthorized = team.ownerId === req.user.id || 
-    team.members.some(m => m.id === req.user.id && (m.TeamMember.role === 'admin' || m.TeamMember.role === 'lead'));
+  const myMembership = await TeamMember.findOne({ where: { TeamId: team.id, UserId: req.user.id } });
+  const isAuthorized = team.ownerId === req.user.id ||
+    (myMembership && (myMembership.role === 'admin' || myMembership.role === 'lead'));
 
   if (!isAuthorized) {
     return next(new ErrorResponse('Not authorized to add members', 403));
   }
 
-  const isMember = team.members.some(member => member.id === parseInt(req.body.userId));
-  if (isMember) {
+  const existing = await TeamMember.findOne({ where: { TeamId: team.id, UserId: parseInt(req.body.userId) } });
+  if (existing) {
     return next(new ErrorResponse('User is already a member', 400));
   }
 
@@ -263,14 +305,16 @@ exports.addMember = asyncHandler(async (req, res, next) => {
 
 // Remove member
 exports.removeMember = asyncHandler(async (req, res, next) => {
-  const team = await Team.findByPk(req.params.id, { include: [{ model: User, as: 'members' }] });
+  const { Team, TeamMember } = req.tenant.models;
+  const team = await Team.findByPk(req.params.id);
 
   if (!team) {
     return next(new ErrorResponse(`Team not found with id of ${req.params.id}`, 404));
   }
 
-  const isAuthorized = team.ownerId === req.user.id || 
-    team.members.some(m => m.id === req.user.id && m.TeamMember.role === 'admin');
+  const myMembership = await TeamMember.findOne({ where: { TeamId: team.id, UserId: req.user.id } });
+  const isAuthorized = team.ownerId === req.user.id ||
+    (myMembership && myMembership.role === 'admin');
 
   if (!isAuthorized) {
     return next(new ErrorResponse('Not authorized to remove members', 403));
@@ -286,14 +330,16 @@ exports.removeMember = asyncHandler(async (req, res, next) => {
 
 // Update member role
 exports.updateMemberRole = asyncHandler(async (req, res, next) => {
-  const team = await Team.findByPk(req.params.id, { include: [{ model: User, as: 'members' }] });
+  const { Team, TeamMember } = req.tenant.models;
+  const team = await Team.findByPk(req.params.id);
 
   if (!team) {
     return next(new ErrorResponse(`Team not found with id of ${req.params.id}`, 404));
   }
 
-  const isAuthorized = team.ownerId === req.user.id || 
-    team.members.some(m => m.id === req.user.id && m.TeamMember.role === 'admin');
+  const myMembership = await TeamMember.findOne({ where: { TeamId: team.id, UserId: req.user.id } });
+  const isAuthorized = team.ownerId === req.user.id ||
+    (myMembership && myMembership.role === 'admin');
 
   if (!isAuthorized) {
     return next(new ErrorResponse('Not authorized to update member roles', 403));

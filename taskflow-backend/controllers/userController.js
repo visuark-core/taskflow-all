@@ -1,29 +1,47 @@
-const { User, Team, Department } = require('../models');
+const { User } = require('../models');
 const asyncHandler = require('../utils/asyncHandler');
 const ErrorResponse = require('../utils/errorResponse');
 const { Op } = require('sequelize');
 
 // Get all users
 exports.getUsers = asyncHandler(async (req, res, next) => {
+  const { Team, TeamMember } = req.tenant.models;
   const attributes = ['id', 'name', 'email', 'avatar', 'role', 'department'];
   if (req.user.role === 'admin') {
     attributes.push('bankDetails');
   }
 
   const users = await User.findAll({
-    where: { 
+    where: {
       isActive: true,
       company: req.user.company
     },
     attributes,
-    include: [{ model: Team, attributes: ['id', 'name'] }],
     order: [['name', 'ASC']]
+  });
+
+  const tmRows = await TeamMember.findAll({});
+  const teamIds = [...new Set(tmRows.map(tm => tm.TeamId))];
+  const teams = await Team.findAll({ where: { id: { [Op.in]: teamIds } }, attributes: ['id', 'name'] });
+  const teamMap = Object.fromEntries(teams.map(t => [t.id, { id: t.id, name: t.name }]));
+
+  const userTeams = {};
+  tmRows.forEach(tm => {
+    if (teamMap[tm.TeamId]) {
+      (userTeams[tm.UserId] = userTeams[tm.UserId] || []).push(teamMap[tm.TeamId]);
+    }
+  });
+
+  const jsonUsers = users.map(u => {
+    const j = u.toJSON();
+    j.teams = userTeams[j.id] || [];
+    return j;
   });
 
   res.status(200).json({
     success: true,
     count: users.length,
-    users // Note: The frontend expects 'users', not 'data' based on the old route
+    users: jsonUsers // Note: The frontend expects 'users', not 'data' based on the old route
   });
 });
 
@@ -50,7 +68,7 @@ exports.uploadAvatar = asyncHandler(async (req, res, next) => {
 
   try {
     const result = await cloudinary.uploader.upload(req.file.path, {
-      folder: 'taskflow/avatars',
+      folder: `taskflow/${req.tenant?.slug || 'global'}/avatars`,
       transformation: [{ width: 150, height: 150, crop: 'thumb', gravity: 'face' }]
     });
 
@@ -71,6 +89,7 @@ exports.uploadAvatar = asyncHandler(async (req, res, next) => {
 
 // Create user (admin)
 exports.createUser = asyncHandler(async (req, res, next) => {
+  const { Department } = req.tenant.models;
   const allowedRoles = ['admin', 'ceo', 'chief_manager', 'department_manager'];
   if (!allowedRoles.includes(req.user.role)) {
     return res.status(403).json({ success: false, error: 'Not authorized to create users' });
@@ -124,28 +143,36 @@ exports.createUser = asyncHandler(async (req, res, next) => {
 
 // Get single user
 exports.getUser = asyncHandler(async (req, res, next) => {
+  const { Team, TeamMember } = req.tenant.models;
   const excludeAttributes = ['password'];
   if (req.user.role !== 'admin' && req.user.id !== parseInt(req.params.id)) {
     excludeAttributes.push('bankDetails');
   }
 
   const user = await User.findByPk(req.params.id, {
-    attributes: { exclude: excludeAttributes },
-    include: [{ model: Team, attributes: ['id', 'name', 'description'] }]
+    attributes: { exclude: excludeAttributes }
   });
 
   if (!user) {
     return next(new ErrorResponse(`User not found with id of ${req.params.id}`, 404));
   }
 
+  const myTeamRows = await TeamMember.findAll({ where: { UserId: user.id } });
+  const teamIds = myTeamRows.map(tm => tm.TeamId);
+  const teams = await Team.findAll({ where: { id: { [Op.in]: teamIds } }, attributes: ['id', 'name', 'description'] });
+
+  const userJson = user.toJSON();
+  userJson.teams = teams;
+
   res.status(200).json({
     success: true,
-    user // Changed from data to user
+    user: userJson // Changed from data to user
   });
 });
 
 // Update user by admin
 exports.updateUser = asyncHandler(async (req, res, next) => {
+  const { Department } = req.tenant.models;
   const allowedRoles = ['admin', 'ceo', 'chief_manager', 'department_manager'];
   if (!allowedRoles.includes(req.user.role)) {
     return res.status(403).json({ success: false, error: 'Only admins, CEOs, or managers can edit users' });
