@@ -1,0 +1,55 @@
+const asyncHandler = require("../utils/asyncHandler");
+const ErrorResponse = require("../utils/errorResponse");
+const { User } = require("../models");
+const makeSequelize = require("../utils/makeSequelize");
+const { build } = require("../models");
+const { tenantConnectionString, setCache, getCache } = require("../services/tenantManager");
+
+async function resolveSequelize(slug, dbName) {
+  const cached = getCache(slug);
+  if (cached) return cached;
+  const sequelize = makeSequelize(tenantConnectionString(dbName));
+  const models = build(sequelize);
+  const entry = { sequelize, models };
+  setCache(slug, entry);
+  return entry;
+}
+
+const tenantRouter = asyncHandler(async (req, res, next) => {
+  if (!req.user || !req.user.company) {
+    return next(new ErrorResponse("Company is required to access this resource", 400));
+  }
+
+  const company = await CompanyLookup(req.user.company);
+  if (!company) {
+    return next(new ErrorResponse("Your company is not registered", 400));
+  }
+  if (company.status !== "active") {
+    return next(new ErrorResponse("Your company workspace is still being provisioned. Try again shortly.", 503));
+  }
+
+  const entry = await resolveSequelize(company.slug, company.dbName);
+
+  req.tenant = {
+    slug: company.slug,
+    dbName: company.dbName,
+    models: entry.models,
+    async getUsers(ids, attributes = ["id", "name", "avatar"]) {
+      const unique = [...new Set((ids || []).filter(Boolean))];
+      if (unique.length === 0) return {};
+      const rows = await User.findAll({ where: { id: unique }, attributes });
+      const map = {};
+      for (const r of rows) map[r.id] = r.toJSON();
+      return map;
+    },
+  };
+  next();
+});
+
+// Company registry lookup (lazy require to avoid circular import at boot)
+function CompanyLookup(slug) {
+  const { Company } = require("../models");
+  return Company.findOne({ where: { slug } });
+}
+
+module.exports = tenantRouter;
