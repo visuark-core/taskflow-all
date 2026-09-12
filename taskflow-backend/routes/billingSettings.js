@@ -1,5 +1,6 @@
 const express = require('express');
 const { protect, authorize, authorizeFinance } = require('../middlewares/auth');
+const tenantRouter = require('../middlewares/tenantRouter');
 const upload = require('../config/upload');
 const {
   getBillingSettings,
@@ -12,6 +13,7 @@ const {
 const router = express.Router();
 
 router.use(protect);
+router.use(tenantRouter);
 router.use(authorizeFinance);
 
 router.get('/', getBillingSettings);

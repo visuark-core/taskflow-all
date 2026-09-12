@@ -12,10 +12,12 @@ const {
   getTeamMembers
 } = require('../controllers/projectController');
 const { protect } = require('../middlewares/auth');
+const tenantRouter = require('../middlewares/tenantRouter');
 
 const router = express.Router();
 
 router.use(protect); // All routes require authentication
+router.use(tenantRouter);
 
 // Get team members (juniors) for the current user - MUST be before /:id route
 router.get('/team-members/list', getTeamMembers);

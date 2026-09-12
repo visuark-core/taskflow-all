@@ -6,10 +6,12 @@ const {
   deleteService
 } = require('../controllers/serviceController');
 const { protect, authorize, authorizeFinance } = require('../middlewares/auth');
+const tenantRouter = require('../middlewares/tenantRouter');
 
 const router = express.Router();
 
 router.use(protect);
+router.use(tenantRouter);
 router.use(authorizeFinance);
 
 router.get('/', getServices);

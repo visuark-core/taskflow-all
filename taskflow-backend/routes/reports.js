@@ -1,6 +1,7 @@
 // routes/reports.js
 const express = require('express');
 const { protect, authorize } = require('../middlewares/auth');
+const tenantRouter = require('../middlewares/tenantRouter');
 const { Project, User, Team, Task, Activity, Department, Invoice } = require('../models');
 const { Op } = require('sequelize');
 const asyncHandler = require('../utils/asyncHandler');
@@ -8,6 +9,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const router = express.Router();
 
 router.use(protect);
+router.use(tenantRouter);
 
 // Get productivity trend (last 7 days)
 router.get('/productivity', asyncHandler(async (req, res) => {

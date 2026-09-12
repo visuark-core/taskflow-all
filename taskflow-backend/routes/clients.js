@@ -7,11 +7,13 @@ const {
   deleteClient
 } = require('../controllers/clientController');
 const { protect, authorize, authorizeFinance } = require('../middlewares/auth');
+const tenantRouter = require('../middlewares/tenantRouter');
 
 const router = express.Router();
 
 // Protect all routes under /api/clients
 router.use(protect);
+router.use(tenantRouter);
 router.use(authorizeFinance);
 
 // GET all clients

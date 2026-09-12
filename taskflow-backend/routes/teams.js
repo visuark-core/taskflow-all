@@ -1,5 +1,6 @@
 const express = require('express');
 const { protect } = require('../middlewares/auth');
+const tenantRouter = require('../middlewares/tenantRouter');
 const {
   getTeams,
   getTeamsByDepartment,
@@ -17,6 +18,7 @@ const {
 const router = express.Router();
 
 router.use(protect);
+router.use(tenantRouter);
 
 // Get all teams for user
 router.get('/', getTeams);

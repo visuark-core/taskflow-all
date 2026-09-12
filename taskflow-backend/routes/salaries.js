@@ -8,10 +8,12 @@ const {
   deletePayout
 } = require('../controllers/salaryController');
 const { protect, authorizeFinance } = require('../middlewares/auth');
+const tenantRouter = require('../middlewares/tenantRouter');
 
 const router = express.Router();
 
 router.use(protect);
+router.use(tenantRouter);
 router.use(authorizeFinance);
 
 router.get('/', getSalaryDetails);

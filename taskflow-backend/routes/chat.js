@@ -8,10 +8,12 @@ const {
     deleteMessage
 } = require('../controllers/chatController');
 const { protect } = require('../middlewares/auth');
+const tenantRouter = require('../middlewares/tenantRouter');
 
 const router = express.Router();
 
 router.use(protect);
+router.use(tenantRouter);
 
 router.use((req, res, next) => {
     console.log(`Chat Route Hit: ${req.method} ${req.url}`);

@@ -1,12 +1,14 @@
 // routes/notifications.js
 const express = require('express');
 const { protect } = require('../middlewares/auth');
+const tenantRouter = require('../middlewares/tenantRouter');
 const { Notification, Project, Task } = require('../models');
 const asyncHandler = require('../utils/asyncHandler');
 
 const router = express.Router();
 
 router.use(protect);
+router.use(tenantRouter);
 
 // Get user notifications
 router.get('/', asyncHandler(async (req, res) => {

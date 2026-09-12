@@ -14,11 +14,13 @@ const {
   deleteAttachment
 } = require('../controllers/taskController');
 const { protect } = require('../middlewares/auth');
+const tenantRouter = require('../middlewares/tenantRouter');
 const upload = require('../config/upload');
 
 const router = express.Router();
 
 router.use(protect); // All routes require authentication
+router.use(tenantRouter);
 
 router
   .route('/')

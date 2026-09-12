@@ -1,6 +1,7 @@
 // routes/activities.js
 const express = require('express');
 const { protect } = require('../middlewares/auth');
+const tenantRouter = require('../middlewares/tenantRouter');
 const {
   getActivities,
   getProjectActivities,
@@ -10,6 +11,7 @@ const {
 const router = express.Router();
 
 router.use(protect);
+router.use(tenantRouter);
 
 router.get('/project/:projectId', getProjectActivities);
 router.get('/user/:userId', getUserActivities);

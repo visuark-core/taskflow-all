@@ -12,11 +12,13 @@ const {
   getDepartmentTeams
 } = require('../controllers/departmentController');
 const { protect, authorize } = require('../middlewares/auth');
+const tenantRouter = require('../middlewares/tenantRouter');
 
 const router = express.Router();
 
 // Apply authentication middleware to all routes
 router.use(protect);
+router.use(tenantRouter);
 
 // Get all departments (admin and executives)
 router.get('/', authorize('admin', 'ceo', 'cfo', 'cto', 'cmo', 'chief_manager', 'department_manager'), getDepartments);
