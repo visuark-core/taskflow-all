@@ -265,7 +265,7 @@ exports.updateInvoice = asyncHandler(async (req, res, next) => {
     });
 
   } catch (error) {
-    await t.rollback();
+    if (!t.finished) await t.rollback();
     return next(new ErrorResponse(error.message || 'Failed to update invoice', 500));
   }
 });
