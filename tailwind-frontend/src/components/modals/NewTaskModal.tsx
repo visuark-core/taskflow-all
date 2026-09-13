@@ -49,16 +49,6 @@ export default function NewTaskModal({ isOpen, onClose, onSubmit }: NewTaskModal
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const selectedProj = projects.find(p => (p._id || p.id) === formData.project);
-    if (selectedProj && selectedProj.dueDate && formData.dueDate) {
-      const projDate = new Date(selectedProj.dueDate);
-      const taskDate = new Date(formData.dueDate);
-      if (taskDate > projDate) {
-        alert(`Task due date cannot be after the selected project's deadline (${new Date(selectedProj.dueDate).toISOString().split('T')[0]})`);
-        return;
-      }
-    }
-
     // Prepare payload for backend
     const payload = {
       title: formData.title,

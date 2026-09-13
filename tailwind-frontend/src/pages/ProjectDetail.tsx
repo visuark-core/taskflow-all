@@ -61,18 +61,6 @@ export default function ProjectDetail() {
     e.preventDefault();
     if (!editName.trim()) return;
 
-    if (editDueDate && tasks && tasks.length > 0) {
-      const proposedProjDate = new Date(editDueDate);
-      const activeTasksWithDueDate = tasks.filter(t => t.dueDate);
-      if (activeTasksWithDueDate.length > 0) {
-        const maxTaskDate = new Date(Math.max(...activeTasksWithDueDate.map(t => new Date(t.dueDate).getTime())));
-        if (proposedProjDate < maxTaskDate) {
-          alert(`Project deadline cannot be earlier than the latest task due date (${maxTaskDate.toISOString().split('T')[0]})`);
-          return;
-        }
-      }
-    }
-
     setUpdatingProject(true);
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`}/api/projects/${id}`, {

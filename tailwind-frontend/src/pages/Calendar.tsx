@@ -89,17 +89,6 @@ export default function Calendar() {
   const handleQuickSave = async () => {
     if (!selectedTask) return;
 
-    const projId = selectedTask.projectId || selectedTask.project || (selectedTask.Project && (selectedTask.Project._id || selectedTask.Project.id));
-    const parentProj = projects.find(p => (p._id || p.id) === projId);
-    if (parentProj && parentProj.dueDate && editingDueDate) {
-      const projDate = new Date(parentProj.dueDate);
-      const taskDate = new Date(editingDueDate);
-      if (taskDate > projDate) {
-        alert(`Task due date cannot be after the project's deadline (${new Date(parentProj.dueDate).toISOString().split('T')[0]})`);
-        return;
-      }
-    }
-
     const base = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
     try {
       const tid = selectedTask._id || selectedTask.id;
