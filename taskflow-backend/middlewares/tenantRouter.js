@@ -30,9 +30,11 @@ const tenantRouter = asyncHandler(async (req, res, next) => {
   }
 
   const entry = await resolveSequelize(company.slug);
-  await tenantManager.ensureTenantSchemaReady(company.slug).catch((err) => {
-    console.warn(`[tenant] Auto-heal failed for ${company.slug}:`, err.message);
-  });
+
+  // IMPORTANT: do not mutate live tenant schema during request handling.
+  // A runtime `sync({ alter: true })` can rewrite FKs and break existing project
+  // ownership data. Stale tenant repairs must be handled by a maintenance job.
+  await tenantManager.ensureTenantSchemaReady(company.slug).catch(() => {});
 
   req.tenant = {
     slug: company.slug,

@@ -135,19 +135,20 @@ function isMissingTableError(err) {
 async function ensureTenantSchemaReady(slug) {
   const seq = makeTenantSequelize(slug);
   try {
-    const models = build(seq);
-    for (const name of BUSINESS) {
-      if (!models[name]) continue;
-      try {
-        await models[name].count();
-      } catch (err) {
-        if (!isMissingTableError(err)) throw err;
-        console.warn(`[tenant] Schema for ${slug} is stale; syncing missing tables...`);
-        await seq.sync({ alter: true });
-        await stripCrossDbUserRefs(seq);
-        return true;
-      }
+    const rows = await seq.query(
+      `SELECT table_name FROM information_schema.tables WHERE table_schema = current_schema()`,
+      { type: QueryTypes.SELECT }
+    );
+    const existing = new Set(rows.map((r) => String(r.table_name)));
+    const missing = BUSINESS.filter((name) => !existing.has(name));
+
+    if (missing.length > 0) {
+      console.warn(`[tenant] Schema for ${slug} is stale: missing tables ${missing.join(', ')}`);
+      return true;
     }
+    return false;
+  } catch (err) {
+    console.warn(`[tenant] Read-only tenant schema check failed for ${slug}: ${err.message}`);
     return false;
   } finally {
     await seq.close();
