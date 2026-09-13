@@ -43,6 +43,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const reduxUser = useAppSelector((state) => state.auth.user);
 
+  const logout = () => {
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    localStorage.removeItem('isAuth');
+    setUser(null);
+  };
+
   // Sync context user state with Redux auth state
   useEffect(() => {
     setUser(reduxUser);
@@ -54,7 +61,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const storedUser = localStorage.getItem('user');
       const storedToken = localStorage.getItem('token');
       if (storedUser && storedToken) {
-        setUser(JSON.parse(storedUser));
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
       } else {
         // Clear inconsistent state
         localStorage.removeItem('user');
@@ -68,14 +76,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setIsLoading(false);
     }
 
-    // Intercept 401 errors globally
+    // Only log out on an explicit session expiry if the app has a token and the request is not part of auth flow.
     const originalFetch = window.fetch;
     window.fetch = async (...args) => {
       const res = await originalFetch(...args);
-      if (res.status === 401) {
-        console.warn('Unauthorized request detected. Logging out...');
+      const requestUrl = typeof args[0] === 'string' ? args[0] : args[0] instanceof URL ? args[0].toString() : args[0]?.url || '';
+
+      if (res.status === 401 && localStorage.getItem('token') && !requestUrl.includes('/api/auth/login') && !requestUrl.includes('/api/auth/register')) {
+        console.warn('Unauthorized request detected. Clearing expired session.');
         logout();
       }
+
       return res;
     };
 
@@ -140,13 +151,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const logout = () => {
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
-    localStorage.removeItem('isAuth');
-    setUser(null);
   };
 
   const value: AuthContextType = {

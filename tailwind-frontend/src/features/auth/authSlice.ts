@@ -81,23 +81,43 @@ export interface UpdateProfilePayload {
 }
 
 /** Parse user from localStorage and normalize */
-let parsedUser: User | null = null;
-try {
-  const userData = localStorage.getItem("user");
-  parsedUser = userData ? normalizeUser(JSON.parse(userData)) : null;
-} catch (error) {
-  console.error("Invalid user data in localStorage. Clearing it.");
-  localStorage.removeItem("user");
-  parsedUser = null;
-}
+const getStoredAuth = () => {
+  if (typeof window === "undefined") {
+    return { token: null, user: null, isAuthenticated: false };
+  }
+
+  try {
+    const userData = localStorage.getItem("user");
+    const storedToken = localStorage.getItem("token");
+    const storedIsAuth = localStorage.getItem("isAuth") === "true";
+
+    if (!storedToken || !storedIsAuth) {
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
+      localStorage.removeItem("isAuth");
+      return { token: null, user: null, isAuthenticated: false };
+    }
+
+    const parsedUser = userData ? normalizeUser(JSON.parse(userData)) : null;
+    return {
+      token: storedToken,
+      user: parsedUser,
+      isAuthenticated: !!storedToken,
+    };
+  } catch (error) {
+    console.error("Invalid user data in localStorage. Clearing it.");
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
+    localStorage.removeItem("isAuth");
+    return { token: null, user: null, isAuthenticated: false };
+  }
+};
 
 /** Initial state */
 const initialState: AuthState = {
-  token: localStorage.getItem("token") || null,
-  user: parsedUser,
+  ...getStoredAuth(),
   isLoading: false,
   error: null,
-  isAuthenticated: !!(localStorage.getItem("isAuth") === "true" && localStorage.getItem("token")),
 };
 
 /**
@@ -249,6 +269,12 @@ const authSlice = createSlice({
       localStorage.removeItem("user");
       localStorage.removeItem("isAuth");
     },
+    restoreSession(state) {
+      const stored = getStoredAuth();
+      state.user = stored.user;
+      state.token = stored.token;
+      state.isAuthenticated = stored.isAuthenticated;
+    },
   },
   extraReducers: (builder) => {
     // Register handlers
@@ -327,6 +353,6 @@ const authSlice = createSlice({
   },
 });
 
-export const { updateUser, logout } = authSlice.actions;
+export const { updateUser, logout, restoreSession } = authSlice.actions;
 
 export default authSlice.reducer;
