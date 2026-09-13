@@ -326,26 +326,38 @@ exports.addInvoicePayment = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse('Payment amount must be greater than 0', 400));
   }
 
-  const existing = await InvoicePayment.findAll({ where: { invoiceId: invoice.id } });
-  const { remaining } = paymentTotals(invoice, existing);
-  if (amount - remaining > PAYMENT_EPSILON) {
-    return next(new ErrorResponse(`Payment amount exceeds remaining balance of ₹${remaining.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 400));
-  }
-
   const t = await req.tenant.sequelize.transaction();
   try {
+    const locked = await Invoice.findByPk(req.params.id, { transaction: t, lock: t.LOCK.UPDATE });
+    if (!locked) {
+      await t.rollback();
+      return next(new ErrorResponse('Invoice not found', 404));
+    }
+    if (locked.status === 'cancelled') {
+      await t.rollback();
+      return next(new ErrorResponse('Cannot record payment on a cancelled invoice', 400));
+    }
+    if (locked.status === 'paid') {
+      await t.rollback();
+      return next(new ErrorResponse('Invoice is already fully paid', 400));
+    }
+    const existing = await InvoicePayment.findAll({ where: { invoiceId: locked.id }, transaction: t });
+    const { remaining } = paymentTotals(locked, existing);
+    if (amount - remaining > PAYMENT_EPSILON) {
+      await t.rollback();
+      return next(new ErrorResponse(`Payment amount exceeds remaining balance of ₹${remaining.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 400));
+    }
     const payment = await InvoicePayment.create({
-      invoiceId: invoice.id,
+      invoiceId: locked.id,
       amount,
       paymentDate: req.body.paymentDate || new Date(),
       method: req.body.method || 'other',
       note: req.body.note
     }, { transaction: t });
 
-    const payments = await InvoicePayment.findAll({ where: { invoiceId: invoice.id }, transaction: t });
-    const totals = await settleInvoiceStatus(invoice, payments, t);
+    const payments = await InvoicePayment.findAll({ where: { invoiceId: locked.id }, transaction: t });
+    const totals = await settleInvoiceStatus(locked, payments, t);
     await t.commit();
-
     res.status(201).json({ success: true, data: { payment, ...totals } });
   } catch (err) {
     await t.rollback();
