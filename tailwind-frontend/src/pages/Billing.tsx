@@ -139,6 +139,8 @@ export default function Billing() {
   // Invoices Detail Viewer State
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [detailedInvoice, setDetailedInvoice] = useState<Invoice | null>(null);
+  const [paymentForm, setPaymentForm] = useState({ amount: '', paymentDate: '', method: 'other' as PaymentMethod, note: '' });
+  const [submittingPayment, setSubmittingPayment] = useState(false);
 
   const [invoiceForm, setInvoiceForm] = useState({
     invoiceNumber: '',
@@ -605,6 +607,57 @@ export default function Billing() {
     const paid = (inv.payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
     const remaining = Math.max(0, Number(inv.totalAmount) - paid);
     return { paid, remaining };
+  };
+
+  const handleAddPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!detailedInvoice) return;
+    const amount = parseFloat(paymentForm.amount);
+    if (!amount || isNaN(amount) || amount <= 0) {
+      alert('Enter a valid payment amount greater than 0');
+      return;
+    }
+    const { remaining } = paymentTotals(detailedInvoice);
+    if (amount - remaining > 0.01) {
+      alert(`Payment amount exceeds remaining balance of ₹${remaining.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`);
+      return;
+    }
+    setSubmittingPayment(true);
+    try {
+      const headers = { Authorization: token ? `Bearer ${token}` : '' };
+      const res = await axios.post(
+        `${API_URL}/api/invoices/${detailedInvoice.id}/payments`,
+        {
+          amount,
+          paymentDate: paymentForm.paymentDate || new Date().toISOString().split('T')[0],
+          method: paymentForm.method,
+          note: paymentForm.note || undefined
+        },
+        { headers }
+      );
+      const totals = res.data.data;
+      setDetailedInvoice(prev => prev ? { ...prev, status: totals.invoiceStatus, payments: [...(prev.payments || []), res.data.data.payment] } : prev);
+      setPaymentForm({ amount: '', paymentDate: '', method: 'other', note: '' });
+      fetchAllData();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to record payment');
+    } finally {
+      setSubmittingPayment(false);
+    }
+  };
+
+  const handleDeletePayment = async (paymentId: number) => {
+    if (!detailedInvoice) return;
+    if (!window.confirm('Delete this payment? The invoice status will be recalculated.')) return;
+    try {
+      const headers = { Authorization: token ? `Bearer ${token}` : '' };
+      const res = await axios.delete(`${API_URL}/api/invoices/${detailedInvoice.id}/payments/${paymentId}`, { headers });
+      const totals = res.data.data;
+      setDetailedInvoice(prev => prev ? { ...prev, status: totals.invoiceStatus, payments: (prev.payments || []).filter(p => p.id !== paymentId) } : prev);
+      fetchAllData();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to delete payment');
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -1800,6 +1853,86 @@ export default function Billing() {
                     ₹{detailedInvoice.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </span>
                 </div>
+              </div>
+
+              {/* --- Payments Register (not printed) --- */}
+              <div className="print:hidden border border-gray-200 dark:border-gray-800 rounded-xl p-5 bg-gray-50 dark:bg-gray-800/30">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                    <IndianRupee className="h-4 w-4 text-green-600" /> Payments
+                  </h4>
+                  <div className="flex items-center gap-4 text-xs font-semibold">
+                    <span className="text-green-600 dark:text-green-400">
+                      Paid: ₹{paymentTotals(detailedInvoice).paid.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </span>
+                    <span className="text-red-600 dark:text-red-400">
+                      Remaining: ₹{paymentTotals(detailedInvoice).remaining.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
+
+                {(detailedInvoice.payments || []).length > 0 ? (
+                  <div className="space-y-2 mb-4">
+                    {(detailedInvoice.payments || []).slice().reverse().map(p => (
+                      <div key={p.id} className="flex items-center justify-between bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2.5 text-xs">
+                        <div className="flex items-center gap-3">
+                          <span className="font-bold text-green-700 dark:text-green-400">₹{Number(p.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                          <span className="text-gray-500 dark:text-gray-400">{formatDateSlash(p.paymentDate)}</span>
+                          <span className="capitalize bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded px-2 py-0.5">{p.method}</span>
+                          {p.note && <span className="text-gray-500 dark:text-gray-400 italic">{p.note}</span>}
+                        </div>
+                        {isAdminOrManager && (
+                          <button onClick={() => handleDeletePayment(p.id)} className="text-red-500 hover:text-red-700" title="Delete payment">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">No payments recorded yet.</p>
+                )}
+
+                {detailedInvoice.status !== 'paid' && detailedInvoice.status !== 'cancelled' && isAdminOrManager && (
+                  <form onSubmit={handleAddPayment} className="grid grid-cols-2 md:grid-cols-5 gap-2 items-end">
+                    <div>
+                      <label className="block text-[10px] font-semibold text-gray-500 uppercase mb-1">Amount (₹)</label>
+                      <input type="number" min="0.01" step="0.01" required value={paymentForm.amount}
+                        onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
+                        className="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary-500" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-gray-500 uppercase mb-1">Date</label>
+                      <input type="date" value={paymentForm.paymentDate}
+                        onChange={(e) => setPaymentForm({ ...paymentForm, paymentDate: e.target.value })}
+                        className="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary-500" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-gray-500 uppercase mb-1">Method</label>
+                      <select value={paymentForm.method}
+                        onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value as PaymentMethod })}
+                        className="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary-500">
+                        <option value="upi">UPI</option>
+                        <option value="bank">Bank Transfer</option>
+                        <option value="cash">Cash</option>
+                        <option value="cheque">Cheque</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                    <div className="col-span-2 md:col-span-1">
+                      <label className="block text-[10px] font-semibold text-gray-500 uppercase mb-1">Note</label>
+                      <input type="text" value={paymentForm.note}
+                        onChange={(e) => setPaymentForm({ ...paymentForm, note: e.target.value })}
+                        className="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary-500" />
+                    </div>
+                    <div className="col-span-2 md:col-span-1">
+                      <button type="submit" disabled={submittingPayment}
+                        className="w-full inline-flex items-center justify-center gap-1 rounded-md bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 text-xs font-semibold">
+                        <Plus className="h-3.5 w-3.5" /> {submittingPayment ? 'Saving...' : 'Add Payment'}
+                      </button>
+                    </div>
+                  </form>
+                )}
               </div>
 
               {/* Payment Details, Greeting, Seal & Signature Section */}
