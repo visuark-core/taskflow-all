@@ -27,6 +27,7 @@ const companyRoutes = require('./routes/companies');
 
 const errorHandler = require('./middlewares/errorHandler');
 const { startCronJobs } = require('./utils/cronJobs');
+const { ensureDefaultAdmin } = require('./utils/ensureDefaultAdmin');
 
 const app = express();
 
@@ -190,11 +191,21 @@ const connectPromise = (async () => {
     // drops existing ones), so it is safe on databases with legacy tables.
     try {
       const ensurePrimarySchema = require("./utils/ensurePrimarySchema");
-      (async () => { await ensurePrimarySchema(); })().catch((err) => {
-        console.warn("[Startup] ensurePrimarySchema failed:", err.message);
-      });
+      await ensurePrimarySchema();
     } catch (err) {
       console.warn("[Startup] ensurePrimarySchema init failed:", err.message);
+    }
+
+    try {
+      const { User } = require('./models');
+      const defaultAdminResult = await ensureDefaultAdmin(User);
+      if (defaultAdminResult.created) {
+        console.log('[Startup] Created default admin account:', defaultAdminResult.user.email);
+      } else if (defaultAdminResult.user) {
+        console.log('[Startup] Default admin already exists:', defaultAdminResult.user.email);
+      }
+    } catch (err) {
+      console.warn('[Startup] Default admin bootstrap failed:', err.message);
     }
   } catch (err) {
     console.warn('[Startup] DB connect error:', err.message);

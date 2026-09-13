@@ -693,9 +693,9 @@ export default function Dashboard() {
           {/* Department budgets distribution */}
           <div className="card p-6 bg-white dark:bg-gray-900 border border-gray-150 dark:border-gray-800 space-y-4">
             <h3 className="text-lg font-bold text-gray-900 dark:text-white">Department Budgets</h3>
-            <div className="h-64 w-full flex items-center justify-center">
+            <div className="h-64 min-h-[16rem] w-full flex items-center justify-center overflow-hidden">
               {getDepartmentBudgetData().length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={220}>
                   <RechartsPieChart>
                     <Pie
                       data={getDepartmentBudgetData()}
@@ -766,9 +766,9 @@ export default function Dashboard() {
           {/* Task Priority distribution bar chart */}
           <div className="card p-6 bg-white dark:bg-gray-900 border border-gray-150 dark:border-gray-800 lg:col-span-2 space-y-4">
             <h3 className="text-lg font-bold text-gray-900 dark:text-white">Task Priority Distribution</h3>
-            <div className="h-64 w-full">
+            <div className="h-64 min-h-[16rem] w-full overflow-hidden">
               {getPriorityData().length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={220}>
                   <RechartsBarChart data={getPriorityData()} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
@@ -790,9 +790,9 @@ export default function Dashboard() {
           {/* Task state chart */}
           <div className="card p-6 bg-white dark:bg-gray-900 border border-gray-150 dark:border-gray-800 space-y-4">
             <h3 className="text-lg font-bold text-gray-900 dark:text-white">Technical Tasks Status</h3>
-            <div className="h-64 w-full flex items-center justify-center">
+            <div className="h-64 min-h-[16rem] w-full flex items-center justify-center overflow-hidden">
               {getTaskStatusData().some(x => x.value > 0) ? (
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={220}>
                   <RechartsPieChart>
                     <Pie
                       data={getTaskStatusData()}

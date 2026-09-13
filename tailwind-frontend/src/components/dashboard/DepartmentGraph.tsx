@@ -41,11 +41,11 @@ export default function DepartmentGraph() {
         </div>
       </div>
       
-      <div className="h-64 w-full">
+      <div className="h-64 min-h-[16rem] w-full overflow-hidden">
         {loading ? (
           <div className="flex h-full items-center justify-center text-sm text-gray-500">Loading chart...</div>
         ) : (
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={220}>
             <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <defs>
               <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
