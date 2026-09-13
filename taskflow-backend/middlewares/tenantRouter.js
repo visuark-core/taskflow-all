@@ -30,6 +30,9 @@ const tenantRouter = asyncHandler(async (req, res, next) => {
   }
 
   const entry = await resolveSequelize(company.slug);
+  await tenantManager.ensureTenantSchemaReady(company.slug).catch((err) => {
+    console.warn(`[tenant] Auto-heal failed for ${company.slug}:`, err.message);
+  });
 
   req.tenant = {
     slug: company.slug,

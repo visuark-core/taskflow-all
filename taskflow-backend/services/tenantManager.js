@@ -124,8 +124,38 @@ async function syncAllTenants() {
   return { synced: results };
 }
 
+function isMissingTableError(err) {
+  return !!err && (
+    /relation .* does not exist/i.test(err.message) ||
+    /table .* does not exist/i.test(err.message) ||
+    /unknown table/i.test(err.message)
+  );
+}
+
+async function ensureTenantSchemaReady(slug) {
+  const seq = makeTenantSequelize(slug);
+  try {
+    const models = build(seq);
+    for (const name of BUSINESS) {
+      if (!models[name]) continue;
+      try {
+        await models[name].count();
+      } catch (err) {
+        if (!isMissingTableError(err)) throw err;
+        console.warn(`[tenant] Schema for ${slug} is stale; syncing missing tables...`);
+        await seq.sync({ alter: true });
+        await stripCrossDbUserRefs(seq);
+        return true;
+      }
+    }
+    return false;
+  } finally {
+    await seq.close();
+  }
+}
+
 module.exports = {
   TENANT_PREFIX, BUSINESS, createSchema, dropTenantSchema, makeTenantSequelize,
   provisionCompany, getModels, setCache, getCache, syncAllTenants,
-  stripCrossDbUserRefs,
+  syncAllTenants, ensureTenantSchemaReady, stripCrossDbUserRefs,
 };
