@@ -3,6 +3,7 @@ const ErrorResponse = require("../utils/errorResponse");
 const { User } = require("../models");
 const { build } = require("../models");
 const tenantManager = require("../services/tenantManager");
+const slugify = require("../utils/slugify");
 
 async function resolveSequelize(slug) {
   const cached = tenantManager.getCache(slug);
@@ -19,7 +20,8 @@ const tenantRouter = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse("Company is required to access this resource", 400));
   }
 
-  const company = await CompanyLookup(req.user.company);
+  const companySlug = slugify(req.user.company) || req.user.company;
+  const company = await CompanyLookup(companySlug);
   if (!company) {
     return next(new ErrorResponse("Your company is not registered", 400));
   }
