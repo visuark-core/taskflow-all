@@ -5,7 +5,7 @@ const ErrorResponse = require('../utils/errorResponse');
 // @route   GET /api/invoices
 // @access  Private
 exports.getInvoices = asyncHandler(async (req, res, next) => {
-  const { Invoice, InvoiceItem, Project, Client } = req.tenant.models;
+  const { Invoice, InvoiceItem, Project, Client, InvoicePayment } = req.tenant.models;
   const { projectId, clientId, status } = req.query;
   const whereClause = {};
 
@@ -18,7 +18,8 @@ exports.getInvoices = asyncHandler(async (req, res, next) => {
     include: [
       { model: Project, as: 'project', attributes: ['id', 'name'] },
       { model: Client, as: 'client', attributes: ['id', 'name', 'company'] },
-      { model: InvoiceItem, as: 'items' }
+      { model: InvoiceItem, as: 'items' },
+      { model: InvoicePayment, as: 'payments' }
     ],
     order: [['createdAt', 'DESC']]
   });
@@ -34,12 +35,13 @@ exports.getInvoices = asyncHandler(async (req, res, next) => {
 // @route   GET /api/invoices/:id
 // @access  Private
 exports.getInvoice = asyncHandler(async (req, res, next) => {
-  const { Invoice, InvoiceItem, Project, Client } = req.tenant.models;
+  const { Invoice, InvoiceItem, Project, Client, InvoicePayment } = req.tenant.models;
   const invoice = await Invoice.findByPk(req.params.id, {
     include: [
       { model: Project, as: 'project', attributes: ['id', 'name', 'description', 'startDate', 'endDate'] },
       { model: Client, as: 'client', attributes: ['id', 'name', 'company', 'email', 'phone', 'address', 'website'] },
-      { model: InvoiceItem, as: 'items' }
+      { model: InvoiceItem, as: 'items' },
+      { model: InvoicePayment, as: 'payments' }
     ]
   });
 
@@ -57,7 +59,7 @@ exports.getInvoice = asyncHandler(async (req, res, next) => {
 // @route   POST /api/invoices
 // @access  Private (Admin/Manager/Executive)
 exports.createInvoice = asyncHandler(async (req, res, next) => {
-  const { Invoice, InvoiceItem, Project, Client } = req.tenant.models;
+  const { Invoice, InvoiceItem, Project, Client, InvoicePayment } = req.tenant.models;
   const {
     invoiceNumber,
     issueDate,
@@ -135,7 +137,8 @@ exports.createInvoice = asyncHandler(async (req, res, next) => {
       include: [
         { model: Project, as: 'project', attributes: ['id', 'name'] },
         { model: Client, as: 'client', attributes: ['id', 'name', 'company'] },
-        { model: InvoiceItem, as: 'items' }
+        { model: InvoiceItem, as: 'items' },
+        { model: InvoicePayment, as: 'payments' }
       ]
     });
 
@@ -154,7 +157,7 @@ exports.createInvoice = asyncHandler(async (req, res, next) => {
 // @route   PUT /api/invoices/:id
 // @access  Private (Admin/Manager/Executive)
 exports.updateInvoice = asyncHandler(async (req, res, next) => {
-  const { Invoice, InvoiceItem, Project, Client } = req.tenant.models;
+  const { Invoice, InvoiceItem, Project, Client, InvoicePayment } = req.tenant.models;
   let invoice = await Invoice.findByPk(req.params.id);
 
   if (!invoice) {
@@ -247,7 +250,8 @@ exports.updateInvoice = asyncHandler(async (req, res, next) => {
       include: [
         { model: Project, as: 'project', attributes: ['id', 'name'] },
         { model: Client, as: 'client', attributes: ['id', 'name', 'company'] },
-        { model: InvoiceItem, as: 'items' }
+        { model: InvoiceItem, as: 'items' },
+        { model: InvoicePayment, as: 'payments' }
       ]
     });
 
