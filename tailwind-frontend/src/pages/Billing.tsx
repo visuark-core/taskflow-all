@@ -61,6 +61,18 @@ interface InvoiceItem {
   description?: string;
 }
 
+type PaymentMethod = 'upi' | 'bank' | 'cash' | 'cheque' | 'other';
+
+interface InvoicePayment {
+  id: number;
+  invoiceId: number;
+  amount: number;
+  paymentDate: string;
+  method: PaymentMethod;
+  note?: string;
+  createdAt: string;
+}
+
 interface Project {
   id: number;
   name: string;
@@ -95,6 +107,7 @@ interface Invoice {
   project?: Project;
   client?: Client;
   items?: InvoiceItem[];
+  payments?: InvoicePayment[];
   createdAt: string;
 }
 
@@ -109,7 +122,7 @@ export default function Billing() {
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'invoices' | 'services'>('invoices');
+  const [activeTab, setActiveTab] = useState<'invoices' | 'services' | 'payments'>('invoices');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
@@ -588,6 +601,12 @@ export default function Billing() {
     return matchesSearch && matchesStatus;
   });
 
+  const paymentTotals = (inv: Invoice): { paid: number; remaining: number } => {
+    const paid = (inv.payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
+    const remaining = Math.max(0, Number(inv.totalAmount) - paid);
+    return { paid, remaining };
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'paid':
@@ -657,6 +676,16 @@ export default function Billing() {
               }`}
             >
               Services Catalog
+            </button>
+            <button
+              onClick={() => setActiveTab('payments')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                activeTab === 'payments'
+                  ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
+              }`}
+            >
+              Payments
             </button>
           </div>
 
@@ -745,6 +774,8 @@ export default function Billing() {
                         <th className="px-6 py-4">Issue Date</th>
                         <th className="px-6 py-4">Due Date</th>
                         <th className="px-6 py-4 text-right">Total Amount</th>
+                        <th className="px-6 py-4 text-right">Paid</th>
+                        <th className="px-6 py-4 text-right">Remaining</th>
                         <th className="px-6 py-4 text-center">Actions</th>
                       </tr>
                     </thead>
@@ -779,6 +810,12 @@ export default function Billing() {
                           </td>
                           <td className="px-6 py-4 text-right font-bold text-gray-900 dark:text-gray-100">
                             ₹{inv.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          </td>
+                          <td className="px-6 py-4 text-right font-semibold text-green-600 dark:text-green-400">
+                            ₹{paymentTotals(inv).paid.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          </td>
+                          <td className="px-6 py-4 text-right font-semibold text-red-600 dark:text-red-400">
+                            ₹{paymentTotals(inv).remaining.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                           </td>
                           <td className="px-6 py-4 text-center">
                             <div className="flex items-center justify-center gap-2">
