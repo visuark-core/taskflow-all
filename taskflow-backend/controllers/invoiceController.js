@@ -255,6 +255,10 @@ exports.updateInvoice = asyncHandler(async (req, res, next) => {
       ]
     });
 
+    if (updatedInvoice.payments && updatedInvoice.payments.length > 0) {
+      await settleInvoiceStatus(updatedInvoice, updatedInvoice.payments);
+    }
+
     res.status(200).json({
       success: true,
       data: updatedInvoice
