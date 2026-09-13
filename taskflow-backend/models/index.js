@@ -11,6 +11,7 @@ function build(sequelize) {
   const Service = require("./Service")(sequelize);
   const Invoice = require("./Invoice")(sequelize);
   const InvoiceItem = require("./InvoiceItem")(sequelize);
+  const InvoicePayment = require("./InvoicePayment")(sequelize);
   const Task = require("./Task")(sequelize);
   const Activity = require("./Activity")(sequelize);
   const Message = require("./Message")(sequelize);
@@ -148,6 +149,8 @@ function build(sequelize) {
   Client.hasMany(Invoice, { foreignKey: "clientId", as: "invoices" });
   InvoiceItem.belongsTo(Invoice, { foreignKey: "invoiceId", as: "invoice", onDelete: "CASCADE" });
   Invoice.hasMany(InvoiceItem, { foreignKey: "invoiceId", as: "items", onDelete: "CASCADE" });
+  InvoicePayment.belongsTo(Invoice, { foreignKey: "invoiceId", as: "invoice", onDelete: "CASCADE" });
+  Invoice.hasMany(InvoicePayment, { foreignKey: "invoiceId", as: "payments", onDelete: "CASCADE" });
   SalaryDetail.belongsTo(User, { as: "user", foreignKey: "userId" });
   User.hasOne(SalaryDetail, { as: "salaryDetail", foreignKey: "userId", onDelete: "CASCADE" });
   SalaryPayout.belongsTo(User, { as: "user", foreignKey: "userId" });
@@ -157,7 +160,7 @@ function build(sequelize) {
 
   return {
     sequelize, User, Company, Department, Team, Project, Client, Service,
-    Invoice, InvoiceItem, Task, Activity, Message, Notification,
+    Invoice, InvoiceItem, InvoicePayment, Task, Activity, Message, Notification,
     SalaryDetail, SalaryPayout, Expense, CompanyBillingSetting,
     ProjectMember, TeamMember, DepartmentMember, TaskComment, TaskAttachment, TaskLabel,
   };

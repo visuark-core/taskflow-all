@@ -5,7 +5,7 @@ const normalizeSupabaseUri = require("../utils/normalizeSupabaseUri");
 
 const TENANT_PREFIX = "taskflow_";
 const BUSINESS = [
-  "Department", "Team", "Project", "Client", "Service", "Invoice", "InvoiceItem",
+  "Department", "Team", "Project", "Client", "Service", "Invoice", "InvoiceItem", "InvoicePayment",
   "Task", "Activity", "Message", "Notification", "SalaryDetail", "SalaryPayout",
   "Expense", "CompanyBillingSetting", "ProjectMember", "TeamMember", "DepartmentMember",
   "TaskComment", "TaskAttachment", "TaskLabel",
