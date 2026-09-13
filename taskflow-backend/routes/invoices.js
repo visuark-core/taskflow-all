@@ -4,7 +4,10 @@ const {
   getInvoice,
   createInvoice,
   updateInvoice,
-  deleteInvoice
+  deleteInvoice,
+  getInvoicePayments,
+  addInvoicePayment,
+  deleteInvoicePayment
 } = require('../controllers/invoiceController');
 const { protect, authorize, authorizeFinance } = require('../middlewares/auth');
 const tenantRouter = require('../middlewares/tenantRouter');
@@ -17,6 +20,18 @@ router.use(authorizeFinance);
 
 router.get('/', getInvoices);
 router.get('/:id', getInvoice);
+
+router.get('/:id/payments', getInvoicePayments);
+router.post(
+  '/:id/payments',
+  authorize('admin', 'ceo', 'cfo', 'cto', 'cmo', 'chief_manager', 'department_manager'),
+  addInvoicePayment
+);
+router.delete(
+  '/:id/payments/:paymentId',
+  authorize('admin', 'ceo', 'cfo', 'cto', 'cmo', 'chief_manager', 'department_manager'),
+  deleteInvoicePayment
+);
 
 router.post(
   '/',

@@ -174,6 +174,10 @@ exports.updateInvoice = asyncHandler(async (req, res, next) => {
     items
   } = req.body;
 
+  if (status === 'paid' && invoice.status !== 'paid') {
+    return next(new ErrorResponse('Set status to paid by recording payments against the invoice', 400));
+  }
+
   // Calculate totals if items are provided
   let totalAmount = invoice.totalAmount;
   let processedItems = null;
@@ -277,3 +281,115 @@ exports.deleteInvoice = asyncHandler(async (req, res, next) => {
     data: {}
   });
 });
+
+// @desc    Get payments for an invoice
+// @route   GET /api/invoices/:id/payments
+// @access  Private (Finance)
+exports.getInvoicePayments = asyncHandler(async (req, res, next) => {
+  const { Invoice, InvoicePayment } = req.tenant.models;
+  const invoice = await Invoice.findByPk(req.params.id);
+  if (!invoice) return next(new ErrorResponse('Invoice not found', 404));
+
+  const payments = await InvoicePayment.findAll({
+    where: { invoiceId: invoice.id },
+    order: [['paymentDate', 'DESC'], ['createdAt', 'DESC']]
+  });
+
+  res.status(200).json({ success: true, count: payments.length, data: payments });
+});
+
+// @desc    Record a payment against an invoice
+// @route   POST /api/invoices/:id/payments
+// @access  Private (Finance)
+exports.addInvoicePayment = asyncHandler(async (req, res, next) => {
+  const { Invoice, InvoicePayment } = req.tenant.models;
+  const invoice = await Invoice.findByPk(req.params.id);
+  if (!invoice) return next(new ErrorResponse('Invoice not found', 404));
+
+  if (invoice.status === 'cancelled') {
+    return next(new ErrorResponse('Cannot record payment on a cancelled invoice', 400));
+  }
+  if (invoice.status === 'paid') {
+    return next(new ErrorResponse('Invoice is already fully paid', 400));
+  }
+
+  const amount = parseFloat(req.body.amount);
+  if (!amount || isNaN(amount) || amount <= 0) {
+    return next(new ErrorResponse('Payment amount must be greater than 0', 400));
+  }
+
+  const existing = await InvoicePayment.findAll({ where: { invoiceId: invoice.id } });
+  const { remaining } = paymentTotals(invoice, existing);
+  if (amount - remaining > PAYMENT_EPSILON) {
+    return next(new ErrorResponse(`Payment amount exceeds remaining balance of ₹${remaining.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 400));
+  }
+
+  const t = await req.tenant.sequelize.transaction();
+  try {
+    const payment = await InvoicePayment.create({
+      invoiceId: invoice.id,
+      amount,
+      paymentDate: req.body.paymentDate || new Date(),
+      method: req.body.method || 'other',
+      note: req.body.note
+    }, { transaction: t });
+
+    const payments = await InvoicePayment.findAll({ where: { invoiceId: invoice.id }, transaction: t });
+    const totals = await settleInvoiceStatus(invoice, payments, t);
+    await t.commit();
+
+    res.status(201).json({ success: true, data: { payment, ...totals } });
+  } catch (err) {
+    await t.rollback();
+    return next(new ErrorResponse(err.message || 'Failed to record payment', 500));
+  }
+});
+
+// @desc    Delete a payment from an invoice
+// @route   DELETE /api/invoices/:id/payments/:paymentId
+// @access  Private (Finance)
+exports.deleteInvoicePayment = asyncHandler(async (req, res, next) => {
+  const { Invoice, InvoicePayment } = req.tenant.models;
+  const invoice = await Invoice.findByPk(req.params.id);
+  if (!invoice) return next(new ErrorResponse('Invoice not found', 404));
+
+  const payment = await InvoicePayment.findOne({
+    where: { id: req.params.paymentId, invoiceId: invoice.id }
+  });
+  if (!payment) return next(new ErrorResponse('Payment not found', 404));
+
+  const t = await req.tenant.sequelize.transaction();
+  try {
+    await payment.destroy({ transaction: t });
+    const payments = await InvoicePayment.findAll({ where: { invoiceId: invoice.id }, transaction: t });
+    const totals = await settleInvoiceStatus(invoice, payments, t);
+    await t.commit();
+    res.status(200).json({ success: true, data: totals });
+  } catch (err) {
+    await t.rollback();
+    return next(new ErrorResponse(err.message || 'Failed to delete payment', 500));
+  }
+});
+
+const PAYMENT_EPSILON = 0.01;
+
+function paymentTotals(invoice, payments) {
+  const paidAmount = payments.reduce((sum, p) => sum + Number(p.amount), 0);
+  const remaining = Math.max(0, Number(invoice.totalAmount) - paidAmount);
+  return { paidAmount, remaining };
+}
+
+async function settleInvoiceStatus(invoice, payments, transaction) {
+  const { paidAmount, remaining } = paymentTotals(invoice, payments);
+  let status = invoice.status;
+  if (remaining <= PAYMENT_EPSILON) {
+    status = 'paid';
+  } else if (invoice.status === 'paid') {
+    const due = new Date(invoice.dueDate).getTime();
+    status = due < Date.now() ? 'overdue' : 'sent';
+  }
+  if (status !== invoice.status) {
+    await invoice.update({ status }, transaction ? { transaction } : undefined);
+  }
+  return { paidAmount, remaining, invoiceStatus: status };
+}
