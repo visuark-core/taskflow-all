@@ -17,6 +17,7 @@ import KanbanBoard from './pages/KanbanBoard';
 import NotFound from './pages/NotFound';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import Welcome from './pages/Welcome';
 import Installer from './pages/Installer';
 import Profile from './pages/Profile';
 import Notifications from './pages/Notifications';
@@ -76,6 +77,13 @@ function App() {
           <Route path="kanban" element={<KanbanBoard />} />
           <Route path="*" element={<NotFound />} />
         </Route>
+
+        {/* Post-registration congratulations screen */}
+        <Route path="/welcome" element={
+          <ProtectedRoute>
+            <Welcome />
+          </ProtectedRoute>
+        } />
 
         {/* Fallback redirect */}
         <Route path="*" element={<Navigate to="/login" replace />} />

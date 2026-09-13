@@ -57,6 +57,15 @@ exports.register = asyncHandler(async (req, res, next) => {
     company: slug,
     role,
     department
+  }).catch(async (err) => {
+    console.error('[register] user creation failed, rolling back company:', err.message);
+    await companyRow.destroy();
+    try {
+      await tenantManager.dropTenantSchema(slug);
+    } catch (dropErr) {
+      console.error('[register] could not drop tenant schema after rollback:', dropErr.message);
+    }
+    throw err;
   });
 
   sendTokenResponse(user, 201, res);

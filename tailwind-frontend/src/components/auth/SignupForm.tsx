@@ -7,6 +7,20 @@ import { useAuth } from '../../context/AuthContext'; // Remove signup from destr
 import { useAppDispatch } from '../../hooks/hook';
 import { registerUser } from '../../features/auth/authSlice';
 
+const friendlyRegisterError = (raw: string, email: string): string => {
+  const msg = raw.toLowerCase();
+  if (msg.includes('email must be unique') || msg.includes('unique constraint') && msg.includes('email')) {
+    return `An account with this email (${email}) already exists. Please sign in instead.`;
+  }
+  if (msg.includes('email') && msg.includes('exist')) {
+    return `An account with this email (${email}) already exists. Please sign in instead.`;
+  }
+  if (msg.includes('company name is already taken')) {
+    return 'This company name is already taken. Please choose a different name.';
+  }
+  return raw;
+};
+
 function SignupForm() {
   const dispatch = useAppDispatch();
   const [name, setName] = useState('');
@@ -75,9 +89,14 @@ function SignupForm() {
     }
     try {
       await dispatch(registerUser({ name, email, password, company: company.trim(), role: 'admin', department: 'management' })).unwrap();
-      navigate('/');
+      sessionStorage.setItem('tf_signed_up', '1');
+      navigate('/welcome');
     } catch (error) {
-      setFormError(typeof error === 'string' ? error : 'Failed to create account');
+      setFormError(
+        typeof error === 'string'
+          ? friendlyRegisterError(error, email)
+          : 'Failed to create account'
+      );
     }
   };
 

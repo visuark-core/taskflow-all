@@ -124,7 +124,7 @@ export const registerUser = createAsyncThunk<
     };
   } catch (error: unknown) {
     if (axios.isAxiosError(error)) {
-      return rejectWithValue(error.response?.data?.message || "An error occurred");
+      return rejectWithValue(error.response?.data?.error || error.response?.data?.message || "An error occurred");
     }
     return rejectWithValue("An unknown error occurred");
   }
@@ -156,7 +156,7 @@ export const loginUser = createAsyncThunk<
       if (!error.response) {
         return rejectWithValue("Network error. Please try again.");
       }
-      return rejectWithValue(error.response.data.message || "Login failed.");
+      return rejectWithValue(error.response.data.error || error.response.data.message || "Login failed.");
     }
     return rejectWithValue("An unknown error occurred.");
   }
@@ -189,7 +189,7 @@ export const updateUserProfile = createAsyncThunk<
     };
   } catch (error: unknown) {
     if (axios.isAxiosError(error)) {
-      return rejectWithValue(error.response?.data?.message || error.response?.data?.error || "Update failed");
+      return rejectWithValue(error.response?.data?.error || error.response?.data?.message || "Update failed");
     }
     return rejectWithValue("An unknown error occurred");
   }

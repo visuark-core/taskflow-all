@@ -10,7 +10,9 @@ function Signup() {
   const navigate = useNavigate();
   
   useEffect(() => {
-    if (isAuthenticated) {
+    // A freshly registered user is shown the congratulations screen (/welcome),
+    // so skip redirecting to '/' for the first moments after signup.
+    if (isAuthenticated && !sessionStorage.getItem('tf_signed_up')) {
       navigate('/');
     }
   }, [isAuthenticated, navigate]);

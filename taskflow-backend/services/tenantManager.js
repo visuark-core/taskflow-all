@@ -40,6 +40,17 @@ async function createSchema(slug) {
   }
 }
 
+// Drop a tenant schema (used to roll back a partial registration).
+async function dropTenantSchema(slug) {
+  const schema = `${TENANT_PREFIX}${slug}`;
+  const owner = ownerConnection();
+  try {
+    await owner.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
+  } finally {
+    await owner.close();
+  }
+}
+
 // Sequelize instance bound to a tenant schema in the primary DB.
 // options.schema makes Sequelize qualify all DDL/queries to that schema.
 function makeTenantSequelize(slug) {
@@ -114,7 +125,7 @@ async function syncAllTenants() {
 }
 
 module.exports = {
-  TENANT_PREFIX, BUSINESS, createSchema, makeTenantSequelize,
+  TENANT_PREFIX, BUSINESS, createSchema, dropTenantSchema, makeTenantSequelize,
   provisionCompany, getModels, setCache, getCache, syncAllTenants,
   stripCrossDbUserRefs,
 };
