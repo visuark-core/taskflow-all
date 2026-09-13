@@ -82,6 +82,11 @@ module.exports = (sequelize) => {
     },
     {
       hooks: {
+        beforeValidate: (user) => {
+          if (user.email) {
+            user.email = String(user.email).trim().toLowerCase();
+          }
+        },
         beforeSave: async (user) => {
           if (user.changed("password")) {
             const salt = await bcrypt.genSalt(10);

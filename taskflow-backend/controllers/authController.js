@@ -6,11 +6,23 @@ const tenantManager = require('../services/tenantManager');
 const slugify = require('../utils/slugify');
 const ensurePrimarySchema = require('../utils/ensurePrimarySchema');
 
+const normalizeEmail = (value) => String(value || '').trim().toLowerCase();
+
+async function findUserByEmail(email) {
+  const normalized = normalizeEmail(email);
+  const user = await User.findOne({ where: { email: normalized } });
+  if (user) return user;
+  return User.findOne({
+    where: sequelize.where(sequelize.fn('lower', sequelize.col('email')), '=', normalized)
+  });
+}
+
 // Register user (the company field is a new company NAME to be created)
 exports.register = asyncHandler(async (req, res, next) => {
   await ensurePrimarySchema();
   console.log('Register request body:', req.body);
   const { name, email, password, company, role, department } = req.body;
+  const normalizedEmail = normalizeEmail(email);
   const companyName = String(company || '').trim();
   if (!companyName) {
     return next(new ErrorResponse('Company name is required', 400));
@@ -20,10 +32,10 @@ exports.register = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse('Please enter a valid company name', 400));
   }
 
-  if (email === 'admin@visuark.com' && role !== 'admin') {
+  if (normalizedEmail === 'admin@visuark.com' && role !== 'admin') {
     return next(new ErrorResponse('The role of admin@visuark.com must be admin', 400));
   }
-  if (email === 'ceo@visuark.com' && role !== 'ceo') {
+  if (normalizedEmail === 'ceo@visuark.com' && role !== 'ceo') {
     return next(new ErrorResponse('The role of ceo@visuark.com must be ceo', 400));
   }
 
@@ -52,7 +64,7 @@ exports.register = asyncHandler(async (req, res, next) => {
 
   const user = await User.create({
     name,
-    email,
+    email: normalizedEmail,
     password,
     company: slug,
     role,
@@ -74,12 +86,13 @@ exports.register = asyncHandler(async (req, res, next) => {
 // Login user
 exports.login = asyncHandler(async (req, res, next) => {
   const { email, password } = req.body;
+  const normalizedEmail = normalizeEmail(email);
 
-  if (!email || !password) {
+  if (!normalizedEmail || !password) {
     return next(new ErrorResponse('Please provide an email and password', 400));
   }
 
-  const user = await User.findOne({ where: { email } });
+  const user = await findUserByEmail(normalizedEmail);
 
   if (!user) {
     return next(new ErrorResponse('Invalid credentials', 401));
