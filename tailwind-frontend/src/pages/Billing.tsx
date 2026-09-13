@@ -603,6 +603,11 @@ export default function Billing() {
     return matchesSearch && matchesStatus;
   });
 
+  const filteredPayments = invoices
+    .filter(inv => (inv.payments || []).length > 0)
+    .flatMap(inv => (inv.payments || []).map(p => ({ invoice: inv, payment: p })))
+    .sort((a, b) => new Date(b.payment.paymentDate).getTime() - new Date(a.payment.paymentDate).getTime());
+
   const paymentTotals = (inv: Invoice): { paid: number; remaining: number } => {
     const paid = (inv.payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
     const remaining = Math.max(0, Number(inv.totalAmount) - paid);
@@ -752,13 +757,15 @@ export default function Billing() {
                 <Settings className="h-4 w-4" />
                 Bill Settings
               </button>
-              <button
-                onClick={activeTab === 'invoices' ? handleOpenCreateInvoiceModal : handleOpenCreateServiceModal}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-primary-500 transition-colors"
-              >
-                <Plus className="h-4 w-4" />
-                {activeTab === 'invoices' ? 'Create Invoice' : 'Add Service'}
-              </button>
+              {(activeTab === 'invoices' || activeTab === 'services') && (
+                <button
+                  onClick={activeTab === 'invoices' ? handleOpenCreateInvoiceModal : handleOpenCreateServiceModal}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-primary-500 transition-colors"
+                >
+                  <Plus className="h-4 w-4" />
+                  {activeTab === 'invoices' ? 'Create Invoice' : 'Add Service'}
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -907,6 +914,57 @@ export default function Billing() {
               </div>
             )}
           </>
+        )}
+
+        {activeTab === 'payments' && (
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm overflow-hidden">
+            {filteredPayments.length === 0 ? (
+              <div className="text-center py-16 border-2 border-dashed border-gray-300 dark:border-gray-750 rounded-xl bg-gray-50 dark:bg-gray-800/10 m-4">
+                <IndianRupee className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-100">No payments recorded yet</h3>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Open an invoice and record its payment.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800 text-left">
+                  <thead className="bg-gray-50 dark:bg-gray-800/40 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-405">
+                    <tr>
+                      <th className="px-6 py-4">Invoice #</th>
+                      <th className="px-6 py-4">Client / Project</th>
+                      <th className="px-6 py-4">Payment Date</th>
+                      <th className="px-6 py-4">Method</th>
+                      <th className="px-6 py-4 text-right">Amount</th>
+                      <th className="px-6 py-4">Note</th>
+                      <th className="px-6 py-4">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-150 dark:divide-gray-800 text-xs text-gray-700 dark:text-gray-300">
+                    {filteredPayments.map(({ invoice, payment }) => (
+                      <tr key={payment.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
+                        <td className="px-6 py-4 font-bold text-gray-900 dark:text-gray-100">{invoice.invoiceNumber}</td>
+                        <td className="px-6 py-4">
+                          {(invoice.client?.name || '—')}{invoice.project?.name ? ` / ${invoice.project.name}` : ''}
+                        </td>
+                        <td className="px-6 py-4">{formatDateSlash(payment.paymentDate)}</td>
+                        <td className="px-6 py-4">
+                          <span className="capitalize bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded px-2 py-0.5">{payment.method}</span>
+                        </td>
+                        <td className="px-6 py-4 text-right font-bold text-green-700 dark:text-green-400">
+                          ₹{Number(payment.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="px-6 py-4 text-gray-500 dark:text-gray-400">{payment.note || '—'}</td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase ${getStatusColor(invoice.status)}`}>
+                            {invoice.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         )}
 
         {/* --- Services Catalog Tab --- */}
@@ -1092,7 +1150,7 @@ export default function Billing() {
                     >
                       <option value="draft">Draft</option>
                       <option value="sent">Sent (Due)</option>
-                      <option value="paid">Paid</option>
+                      <option value="paid" disabled>Paid (auto via payments)</option>
                       <option value="overdue">Overdue</option>
                       <option value="cancelled">Cancelled</option>
                     </select>
@@ -1680,14 +1738,6 @@ export default function Billing() {
                         className="px-2.5 py-1 text-[10px] font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
                       >
                         Mark Sent
-                      </button>
-                    )}
-                    {(detailedInvoice.status === 'draft' || detailedInvoice.status === 'sent') && (
-                      <button
-                        onClick={() => handleUpdateInvoiceStatus(detailedInvoice.id, 'paid')}
-                        className="px-2.5 py-1 text-[10px] font-bold text-green-700 hover:bg-green-50 dark:hover:bg-green-950/20 rounded"
-                      >
-                        Mark Paid
                       </button>
                     )}
                     {detailedInvoice.status !== 'cancelled' && detailedInvoice.status !== 'paid' && (
