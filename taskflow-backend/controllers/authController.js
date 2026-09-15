@@ -17,6 +17,37 @@ async function findUserByEmail(email) {
   });
 }
 
+// Supabase poolers can route reads to a replica that hasn't yet caught up with
+// DDL/DML committed on the primary (seen on production as transient
+// "relation \"Companies\" does not exist" right after bootstrap). One retry
+// after re-ensuring the primary schema is enough to ride over the lag window.
+async function createCompanyRow(companyName, slug) {
+  const attempt = async () => {
+    const existing = await Company.count({ where: { slug } });
+    const nameTaken = await Company.count({
+      where: sequelize.where(sequelize.fn('lower', sequelize.col('name')), '=', companyName.trim().toLowerCase()),
+    });
+    if (existing + nameTaken > 0) {
+      throw new ErrorResponse('This company name is already taken', 400);
+    }
+    return Company.create({
+      name: companyName,
+      slug,
+      dbName: `${tenantManager.TENANT_PREFIX}${slug}`,
+      status: 'provisioning'
+    });
+  };
+
+  try {
+    return await attempt();
+  } catch (err) {
+    if (err instanceof ErrorResponse || !/does not exist/i.test(err.message)) throw err;
+    await ensurePrimarySchema();
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    return attempt();
+  }
+}
+
 // Register user (the company field is a new company NAME to be created)
 exports.register = asyncHandler(async (req, res, next) => {
   await ensurePrimarySchema();
@@ -39,20 +70,7 @@ exports.register = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse('The role of ceo@visuark.com must be ceo', 400));
   }
 
-  const existing = await Company.count({ where: { slug } });
-  const nameTaken = await Company.count({
-    where: sequelize.where(sequelize.fn('lower', sequelize.col('name')), '=', companyName.trim().toLowerCase()),
-  });
-  if (existing + nameTaken > 0) {
-    return next(new ErrorResponse('This company name is already taken', 400));
-  }
-
-  const companyRow = await Company.create({
-    name: companyName,
-    slug,
-    dbName: `${tenantManager.TENANT_PREFIX}${slug}`,
-    status: 'provisioning'
-  });
+  const companyRow = await createCompanyRow(companyName, slug);
 
   try {
     await tenantManager.provisionCompany(companyRow);
