@@ -87,14 +87,27 @@ async function stripCrossDbUserRefs(seq) {
 
 async function provisionCompany(company) {
   const slug = company.slug;
-  await createSchema(slug);
-  const seq = makeTenantSequelize(slug);
-  build(seq);
-  await seq.sync({ alter: true });
-  await stripCrossDbUserRefs(seq);
-  await seq.close();
-  await company.update({ status: "active", dbName: `${TENANT_PREFIX}${slug}` });
-  return await company.reload();
+  // DDL over the pooler is slow on cold starts; bound its retries so a cold
+  // failure can be retried once without blowing past the function duration cap.
+  await retryTransient(async () => {
+    await createSchema(slug);
+    const seq = makeTenantSequelize(slug);
+    try {
+      build(seq);
+      await seq.sync({ alter: true });
+      await stripCrossDbUserRefs(seq);
+    } finally {
+      await seq.close();
+    }
+  }, { attempts: 2 });
+  // The tail (update + reload) reads the Companies registry row back through
+  // the pooler, where a lagging replica can report the row/schema missing the
+  // instant after it was created. Retrying just this tail is cheap, so give it
+  // more attempts than the slow DDL phase.
+  return retryTransient(async () => {
+    await company.update({ status: "active", dbName: `${TENANT_PREFIX}${slug}` });
+    return await company.reload();
+  }, { attempts: 3, baseDelayMs: 1000 });
 }
 
 function getModels(slug) {
@@ -132,6 +145,38 @@ function isMissingTableError(err) {
   );
 }
 
+function isTransientDbError(err) {
+  return !!err && (
+    isMissingTableError(err) ||
+    /does not exist|replica not|terminat|ECONNRESET|read ECONNRESET|ended with a non-zero|503|timeout/i.test(err.message)
+  );
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Supabase poolers route reads to replicas that can temporarily lag DDL/DML
+// committed on the primary (seen on production as "relation ... does not
+// exist" during provisioning). Ride over the lag window; never retry real
+// failures so callers keep deterministic error behavior and rollbacks.
+async function retryTransient(fn, { attempts = 3, baseDelayMs = 1500 } = {}) {
+  let lastErr;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (!isTransientDbError(err)) throw err;
+      if (attempt < attempts) {
+        console.warn(`[tenant] transient DB error during provisioning (${err.message}); retry ${attempt}/${attempts}`);
+        await sleep(baseDelayMs * attempt);
+      }
+    }
+  }
+  throw lastErr;
+}
+
 async function ensureTenantSchemaReady(slug) {
   const seq = makeTenantSequelize(slug);
   try {
@@ -159,4 +204,5 @@ module.exports = {
   TENANT_PREFIX, BUSINESS, createSchema, dropTenantSchema, makeTenantSequelize,
   provisionCompany, getModels, setCache, getCache, syncAllTenants,
   syncAllTenants, ensureTenantSchemaReady, stripCrossDbUserRefs,
+  isMissingTableError, isTransientDbError, retryTransient,
 };

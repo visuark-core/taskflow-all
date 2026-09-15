@@ -77,7 +77,7 @@ exports.register = asyncHandler(async (req, res, next) => {
   } catch (err) {
     console.error('[register] provisioning failed for', slug, ':', err.message);
     await companyRow.destroy();
-    return next(new ErrorResponse('Failed to set up your company workspace. Please try again.', 500));
+    return next(new ErrorResponse('Failed to set up your company workspace. Please try again.', 500, err.message));
   }
 
   const user = await User.create({

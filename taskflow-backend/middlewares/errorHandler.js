@@ -23,6 +23,7 @@ const errorHandler = (err, req, res, next) => {
   res.status(err.statusCode || error.statusCode || 500).json({
     success: false,
     error: error.message || err.message || 'Server Error',
+    ...(error.detail !== undefined ? { detail: error.detail } : {}),
     ...(req.headers['x-debug-sql'] ? { sql: err.sql ? err.sql.slice(0, 500) : undefined } : {}),
   });
 };
