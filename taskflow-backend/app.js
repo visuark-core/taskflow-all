@@ -147,12 +147,19 @@ app.use('/api/salaries', salaryRoutes);
 app.use('/api/billing-settings', billingSettingsRoutes);
 app.use('/api/companies', companyRoutes);
 
-// Temporary endpoint to trigger db sync on Vercel
+// Repair/diagnostic endpoint: ensure primary schema (Users + Companies) and a
+// default admin exist. Deliberately does NOT run a full sequelize.sync({alter:true})
+// — business tables live in per-company tenant schemas, and a full alter sync of
+// the primary schema clashes with tablet enum types (seen on production as
+// 'cannot cast type enum_Departments_status to public.enum_Departments_status').
 app.get('/api/db-sync', async (req, res) => {
   try {
-    const { sequelize } = require('./models');
-    await sequelize.sync({ alter: true });
-    res.send("Database synchronized successfully!");
+    const ensurePrimarySchema = require('./utils/ensurePrimarySchema');
+    const { ensureDefaultAdmin } = require('./utils/ensureDefaultAdmin');
+    const { User } = require('./models');
+    await ensurePrimarySchema();
+    const result = await ensureDefaultAdmin(User);
+    res.send(`Primary schema ensured. Default admin: ${result.created ? 'created' : result.user ? 'already exists' : 'skipped (users present)'}`);
   } catch (err) {
     res.status(500).send("Sync failed: " + err.message);
   }
