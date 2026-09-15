@@ -17,8 +17,12 @@ function normalizeSupabaseUri(connectionUri) {
   // 1. Replace the host
   connectionUri = connectionUri.replace(`db.${projectRef}.supabase.co`, getPoolerHost());
 
-  // 2. Change port 5432 to 6543 if present
-  connectionUri = connectionUri.replace(":5432", ":6543");
+  // 2. Use the session-mode pooler (port 5432) which gives each client a
+  //    dedicated backend session - so the app's per-connection
+  //    `SET search_path TO ...` pin actually sticks. The transaction pooler
+  //    (6543) multiplexes backends and leaks a tenant's search_path into
+  //    unrelated connections (seen on production as "User not found" / wrong
+  //    schema resolution). Leave the port unchanged unless SYNC_DIRECT.
 
   // 3. Append the project reference suffix to the username in the connection URI
   const urlMatch = connectionUri.match(/postgresql:\/\/([^:@]+)(:[^@]+)?@/);

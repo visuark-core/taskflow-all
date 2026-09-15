@@ -22,7 +22,7 @@ if (host && !process.env.SYNC_DIRECT) {
     const projectRef = supabaseMatch[1];
     console.log(`Rewriting DB_HOST, DB_PORT and DB_USER to use Supabase IPv4 Pooler for tenant: ${projectRef}`);
     host = poolerHost;
-    port = "6543";
+    port = "5432"; // session-mode pooler: dedicated backend per client so search_path pins hold
     
     if (dbUser && !dbUser.endsWith(`.${projectRef}`)) {
       dbUser = `${dbUser}.${projectRef}`;
