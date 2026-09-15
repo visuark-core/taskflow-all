@@ -24,18 +24,14 @@ async function ensureAdminCompany(deps = {}) {
   const attemptLookup = async () => {
     const company = await Company.findOne({ where: { slug } });
     if (company) {
-      // If the row is stuck at "provisioning" but the schema already exists,
-      // mark it active so tenant requests stop returning 503.
+      // If the row is stuck at "provisioning" the DDL tail may have timed out
+      // on the first cold start. Re-run provisionCompany (idempotent: CREATE
+      // SCHEMA IF NOT EXISTS + sync alter) then mark active.
       if (company.status !== "active") {
-        const schema = `${tenantManager.TENANT_PREFIX}${slug}`;
-        const rows = await db.query(
-          `SELECT to_regclass(${db.escape(`${schema}."Projects"`)}) AS projects`,
-          { type: queryTypes.SELECT }
-        );
-        if (rows[0] && rows[0].projects) {
-          await company.update({ status: "active" });
-          return company.reload();
-        }
+        try {
+          await tenantManager.provisionCompany(company);
+        } catch (_) { /* best-effort; tenantRouter will retry on next request */ }
+        return company.reload();
       }
       return company;
     }
