@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 
-function makeCompanyModel({ existing = null, failLookups = 0 }) {
+function makeCompanyModel({ existing = null, failLookups = 0, duplicateOnCreate = false }) {
   let lookups = 0;
   const calls = { created: [] };
   const model = {
@@ -13,6 +13,11 @@ function makeCompanyModel({ existing = null, failLookups = 0 }) {
       return existing;
     },
     create: async (payload) => {
+      if (duplicateOnCreate) {
+        const err = new Error('Validation error');
+        err.name = 'SequelizeUniqueConstraintError';
+        throw err;
+      }
       calls.created.push(payload);
       return { ...payload, id: 2 };
     },
@@ -127,6 +132,25 @@ function workspaceCheck({ projects, tasks = projects }) {
     assert.equal(company.calls.created.length, 1);
   }
   console.log('Companies-missing cold start self-heals: ok');
+
+  // 5. Concurrent cold starts race to create the same registry row; the loser
+  //    gets SequelizeUniqueConstraintError ("Validation error") and must fall
+  //    back to the winning row instead of crashing the bootstrap.
+  {
+    const winner = { slug: 'visuark', status: 'active', id: 2 };
+    const company = makeCompanyModel({ existing: winner, duplicateOnCreate: true });
+    const w = workspaceCheck({ projects: 'taskflow_visuark."Projects"' });
+    const result = await ensureAdminCompany({
+      Company: company,
+      tenantManager: { TENANT_PREFIX: 'taskflow_', ...w.queries },
+      sequelize: w.sequencer,
+      QueryTypes: w.QueryTypes,
+    });
+    assert.equal(result.slug, 'visuark');
+    assert.equal(result.id, 2);
+    assert.equal(company.calls.created.length, 0);
+  }
+  console.log('duplicate-create race falls back to winning row: ok');
 
   console.log('default admin bootstrap test passed');
 })().catch((err) => {

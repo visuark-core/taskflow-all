@@ -54,7 +54,7 @@ async function ensureAdminCompany(deps = {}) {
       await ensurePrimarySchema();
       return attemptLookup();
     }
-    if (/unique|duplicate/i.test(err.message)) {
+    if (err.name === "SequelizeUniqueConstraintError" || /unique|duplicate/i.test(err.message)) {
       const existing = await Company.findOne({ where: { slug } });
       if (existing) return existing;
     }
