@@ -152,6 +152,43 @@ app.use('/api/companies', companyRoutes);
 // — business tables live in per-company tenant schemas, and a full alter sync of
 // the primary schema clashes with tablet enum types (seen on production as
 // 'cannot cast type enum_Departments_status to public.enum_Departments_status').
+// Read-only diagnostics: report where global tables actually live and what the
+// primary connection resolves. Used to debug schema-visibility issues on live
+// deployments (Users/Companies ending up in different schemas).
+app.get('/api/diag', async (req, res) => {
+  try {
+    const { QueryTypes } = require('sequelize');
+    const sequelize = require('./config/db');
+    const session = await sequelize.query(
+      "SELECT current_schema() AS cur, current_database() AS db, current_user AS usr",
+      { type: QueryTypes.SELECT }
+    );
+    const searchPath = await sequelize.query("SHOW search_path", { type: QueryTypes.SELECT });
+    const global = await sequelize.query(
+      `SELECT n.nspname AS schema, t.relname AS tbl
+         FROM pg_class t JOIN pg_namespace n ON n.oid = t.relnamespace
+        WHERE t.relkind = 'r' AND t.relname IN ('Users','Companies')
+        ORDER BY n.nspname, t.relname`,
+      { type: QueryTypes.SELECT }
+    );
+    const resolved = await sequelize.query(
+      `SELECT to_regclass('"Users"') AS users, to_regclass('"Companies"') AS companies,
+              to_regclass('public."Users"') AS public_users, to_regclass('public."Companies"') AS public_companies`,
+      { type: QueryTypes.SELECT }
+    );
+    const schemas = await sequelize.query(
+      `SELECT n.nspname AS schema, count(t.relname) AS tables
+         FROM pg_namespace n LEFT JOIN pg_class t ON t.relnamespace = n.oid AND t.relkind = 'r'
+        WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname <> 'information_schema'
+        GROUP BY n.nspname ORDER BY n.nspname`,
+      { type: QueryTypes.SELECT }
+    );
+    res.json({ session: session[0], searchPath: searchPath[0], global, resolved: resolved[0], schemas });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/db-sync', async (req, res) => {
   try {
     const ensurePrimarySchema = require('./utils/ensurePrimarySchema');
