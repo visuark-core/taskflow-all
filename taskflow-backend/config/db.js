@@ -5,6 +5,9 @@ const normalizeSupabaseUri = require("../utils/normalizeSupabaseUri");
 
 dotenv.config();
 
+const SUPABASE_POOLER_REGION = process.env.SUPABASE_POOLER_REGION || "ap-south-1";
+const poolerHost = `aws-0-${SUPABASE_POOLER_REGION}.pooler.supabase.com`;
+
 let connectionUri = process.env.DATABASE_URL || process.env.POSTGRES_URL;
 let host = process.env.DB_HOST;
 let port = process.env.DB_PORT || "5432";
@@ -18,7 +21,7 @@ if (host && !process.env.SYNC_DIRECT) {
   if (supabaseMatch) {
     const projectRef = supabaseMatch[1];
     console.log(`Rewriting DB_HOST, DB_PORT and DB_USER to use Supabase IPv4 Pooler for tenant: ${projectRef}`);
-    host = "aws-0-ap-northeast-1.pooler.supabase.com";
+    host = poolerHost;
     port = "6543";
     
     if (dbUser && !dbUser.endsWith(`.${projectRef}`)) {
