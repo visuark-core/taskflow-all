@@ -23,7 +23,22 @@ async function ensureAdminCompany(deps = {}) {
 
   const attemptLookup = async () => {
     const company = await Company.findOne({ where: { slug } });
-    if (company) return company;
+    if (company) {
+      // If the row is stuck at "provisioning" but the schema already exists,
+      // mark it active so tenant requests stop returning 503.
+      if (company.status !== "active") {
+        const schema = `${tenantManager.TENANT_PREFIX}${slug}`;
+        const rows = await db.query(
+          `SELECT to_regclass(${db.escape(`${schema}."Projects"`)}) AS projects`,
+          { type: queryTypes.SELECT }
+        );
+        if (rows[0] && rows[0].projects) {
+          await company.update({ status: "active" });
+          return company.reload();
+        }
+      }
+      return company;
+    }
 
     const schema = `${tenantManager.TENANT_PREFIX}${slug}`;
     const rows = await db.query(
