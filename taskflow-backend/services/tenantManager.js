@@ -59,9 +59,13 @@ function makeTenantSequelize(slug) {
   if (!uri) throw new Error("DATABASE_URL is required");
   const seq = makeSequelize(uri);
   seq.options.schema = schema;
+  // Pin search_path on connect AND on every query so the pin survives the
+  // transaction pooler's shared backend sockets (same rationale as config/db).
+  const pinSearchPath = require("../utils/pinSearchPath");
   seq.addHook("afterConnect", async (connection) => {
     await connection.query(`SET search_path TO "${schema}", public`);
   });
+  pinSearchPath(seq, `"${schema}", public`);
   return seq;
 }
 

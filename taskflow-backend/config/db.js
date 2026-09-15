@@ -22,7 +22,7 @@ if (host && !process.env.SYNC_DIRECT) {
     const projectRef = supabaseMatch[1];
     console.log(`Rewriting DB_HOST, DB_PORT and DB_USER to use Supabase IPv4 Pooler for tenant: ${projectRef}`);
     host = poolerHost;
-    port = "5432"; // session-mode pooler: dedicated backend per client so search_path pins hold
+    port = "6543"; // transaction pooler for fast connection sharing in serverless
     
     if (dbUser && !dbUser.endsWith(`.${projectRef}`)) {
       dbUser = `${dbUser}.${projectRef}`;
@@ -91,13 +91,16 @@ const sequelize = connectionUri
     );
 
 // The primary schema holds the global Users/Companies tables. Supabase's
-// session-mode pooler can hand this connection a server socket whose search_path
+// transaction pooler can hand this connection a server socket whose search_path
 // was left pointing at a tenant schema (taskflow_*) by an earlier tenant
 // Sequelize instance, so unqualified "Users"/"Companies" then resolve to the
-// wrong schema (seen on production as transient "relation Companies does not
-// exist" from register/CompanyLookup). Pin the search path on every connect.
+// wrong schema (seen on production as transient "User not found" / "relation
+// Companies does not exist"). Pin the search path on every connect AND on every
+// query so the pin survives pooled backend reuse.
+const pinSearchPath = require("../utils/pinSearchPath");
 sequelize.addHook("afterConnect", (connection) => {
   return connection.query("SET search_path TO public");
 });
+pinSearchPath(sequelize, "public");
 
 module.exports = sequelize;

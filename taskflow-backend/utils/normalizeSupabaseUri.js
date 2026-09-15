@@ -17,12 +17,13 @@ function normalizeSupabaseUri(connectionUri) {
   // 1. Replace the host
   connectionUri = connectionUri.replace(`db.${projectRef}.supabase.co`, getPoolerHost());
 
-  // 2. Use the session-mode pooler (port 5432) which gives each client a
-  //    dedicated backend session - so the app's per-connection
-  //    `SET search_path TO ...` pin actually sticks. The transaction pooler
-  //    (6543) multiplexes backends and leaks a tenant's search_path into
-  //    unrelated connections (seen on production as "User not found" / wrong
-  //    schema resolution). Leave the port unchanged unless SYNC_DIRECT.
+  // 2. Use the transaction-mode pooler (port 6543) for fast connection sharing
+  //    in serverless. The search_path leak that plagued the old production is
+  //    fixed by per-query SET search_path pinning (utils/pinSearchPath applied
+  //    to the primary and tenant Sequelize instances), not by session mode.
+  //    Transaction mode avoids the dedicated-connection overhead that made
+  //    session-mode requests take 5-9s.
+  connectionUri = connectionUri.replace(":5432", ":6543");
 
   // 3. Append the project reference suffix to the username in the connection URI
   const urlMatch = connectionUri.match(/postgresql:\/\/([^:@]+)(:[^@]+)?@/);
