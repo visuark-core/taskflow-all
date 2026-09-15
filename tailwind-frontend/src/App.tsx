@@ -1,33 +1,42 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { Route, Routes, Navigate } from 'react-router-dom';
 import Layout from './components/layout/Layout';
-import Dashboard from './pages/Dashboard';
-import Projects from './pages/Projects';
-import ProjectDetail from './pages/ProjectDetail';
-import Tasks from './pages/Tasks';
-import TaskDetail from './pages/TaskDetail';
-import Team from './pages/Team';
-import MemberDetail from './pages/MemberDetail';
-import Departments from './pages/Departments';
-import UserManagement from './pages/UserManagement';
-import Calendar from './pages/Calendar';
-import Reports from './pages/Reports';
-import Settings from './pages/Settings';
-import KanbanBoard from './pages/KanbanBoard';
-import NotFound from './pages/NotFound';
-import Login from './pages/Login';
-import Signup from './pages/Signup';
-import Welcome from './pages/Welcome';
-import Installer from './pages/Installer';
-import Profile from './pages/Profile';
-import Notifications from './pages/Notifications';
-import CompanyTree from './pages/CompanyTree';
-import Clients from './pages/Clients';
-import Billing from './pages/Billing';
-import Salary from './pages/Salary';
- 
+
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Projects = lazy(() => import('./pages/Projects'));
+const ProjectDetail = lazy(() => import('./pages/ProjectDetail'));
+const Tasks = lazy(() => import('./pages/Tasks'));
+const TaskDetail = lazy(() => import('./pages/TaskDetail'));
+const Team = lazy(() => import('./pages/Team'));
+const MemberDetail = lazy(() => import('./pages/MemberDetail'));
+const Departments = lazy(() => import('./pages/Departments'));
+const UserManagement = lazy(() => import('./pages/UserManagement'));
+const Calendar = lazy(() => import('./pages/Calendar'));
+const Reports = lazy(() => import('./pages/Reports'));
+const Settings = lazy(() => import('./pages/Settings'));
+const KanbanBoard = lazy(() => import('./pages/KanbanBoard'));
+const NotFound = lazy(() => import('./pages/NotFound'));
+const Login = lazy(() => import('./pages/Login'));
+const Signup = lazy(() => import('./pages/Signup'));
+const Welcome = lazy(() => import('./pages/Welcome'));
+const Installer = lazy(() => import('./pages/Installer'));
+const Profile = lazy(() => import('./pages/Profile'));
+const Notifications = lazy(() => import('./pages/Notifications'));
+const CompanyTree = lazy(() => import('./pages/CompanyTree'));
+const Clients = lazy(() => import('./pages/Clients'));
+const Billing = lazy(() => import('./pages/Billing'));
+const Salary = lazy(() => import('./pages/Salary'));
+
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
+
+function PageFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gray-50">
+      <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary-600 border-t-transparent"></div>
+    </div>
+  );
+}
 
 function App() {
   useEffect(() => {
@@ -37,6 +46,7 @@ function App() {
 
   return (
     <AuthProvider>
+      <Suspense fallback={<PageFallback />}>
       <Routes>
         {/* Auth routes */}
   <Route path="/login" element={<Login />} />
@@ -88,6 +98,7 @@ function App() {
         {/* Fallback redirect */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
+      </Suspense>
     </AuthProvider>
   );
 }

@@ -5,32 +5,54 @@ const { Op } = require('sequelize');
 
 exports.getProjects = asyncHandler(async (req, res, next) => {
   const { Team, Task, Project, ProjectMember, TeamMember, Client, Service } = req.tenant.models;
-  const userTeamRows = await TeamMember.findAll({ where: { UserId: req.user.id } });
+  const isAdminOrExecutive = ['admin', 'ceo', 'cfo', 'cto', 'cmo'].includes(req.user.role);
+
+  // Admins/executives see every project; only run the access-scoping queries
+  // for those who need visibility filtering.
+  const [
+    projects,
+    pmRows,
+    userTeamRows,
+    userTeams,
+    myTasks,
+    myMemberships
+  ] = isAdminOrExecutive
+    ? await Promise.all([
+        Project.findAll({
+          include: [
+            { model: Team, attributes: ['id', 'name'] },
+            { model: Client, as: 'client', attributes: ['id', 'name', 'company'] },
+            { model: Service, as: 'service', attributes: ['id', 'name'] }
+          ],
+          order: [['createdAt', 'DESC']]
+        }),
+        ProjectMember.findAll({})
+      ])
+    : await Promise.all([
+        Project.findAll({
+          include: [
+            { model: Team, attributes: ['id', 'name'] },
+            { model: Client, as: 'client', attributes: ['id', 'name', 'company'] },
+            { model: Service, as: 'service', attributes: ['id', 'name'] }
+          ],
+          order: [['createdAt', 'DESC']]
+        }),
+        ProjectMember.findAll({}),
+        TeamMember.findAll({ where: { UserId: req.user.id } }),
+        Team.findAll({}),
+        Task.findAll({ where: { assigneeId: req.user.id }, attributes: ['projectId'] }),
+        ProjectMember.findAll({ where: { UserId: req.user.id } })
+      ]);
+
   const userTeamIds = new Set(userTeamRows.map(tm => tm.TeamId));
-  const userTeams = await Team.findAll({});
   const myTeamIds = userTeams
     .filter(t => t.ownerId === req.user.id || userTeamIds.has(t.id))
     .map(t => t.id);
 
-  const myTasks = await Task.findAll({
-    where: { assigneeId: req.user.id },
-    attributes: ['projectId']
-  });
   const myTaskProjectIds = [...new Set(myTasks.map(t => t.projectId).filter(id => id != null))];
 
-  const myMemberships = await ProjectMember.findAll({ where: { UserId: req.user.id } });
   const memberProjectIds = new Set(myMemberships.map(m => m.ProjectId));
 
-  const projects = await Project.findAll({
-    include: [
-      { model: Team, attributes: ['id', 'name'] },
-      { model: Client, as: 'client', attributes: ['id', 'name', 'company'] },
-      { model: Service, as: 'service', attributes: ['id', 'name'] }
-    ],
-    order: [['createdAt', 'DESC']]
-  });
-
-  const pmRows = await ProjectMember.findAll({});
   const memberIds = [...new Set(pmRows.map(m => m.UserId))];
   const userMap = await req.tenant.getUsers([...projects.map(p => p.ownerId), ...memberIds]);
   projects.forEach(p => {
@@ -39,7 +61,6 @@ exports.getProjects = asyncHandler(async (req, res, next) => {
     p.setDataValue('members', mids.map(id => userMap[id]).filter(Boolean));
   });
 
-  const isAdminOrExecutive = ['admin', 'ceo', 'cfo', 'cto', 'cmo'].includes(req.user.role);
   if (isAdminOrExecutive) {
     return res.status(200).json({
       success: true,
@@ -74,30 +95,28 @@ exports.getProject = asyncHandler(async (req, res, next) => {
 
   if (!project) return next(new ErrorResponse('Project not found', 404));
 
-  const pmRows = await ProjectMember.findAll({ where: { ProjectId: project.id } });
+  const isOwner = project.ownerId === req.user.id;
+  const isExecutive = ['admin', 'ceo', 'cfo', 'cto', 'cmo'].includes(req.user.role);
+
+  const [pmRows, team, task] = await Promise.all([
+    ProjectMember.findAll({ where: { ProjectId: project.id } }),
+    project.teamId ? Team.findByPk(project.teamId) : Promise.resolve(null),
+    Task.findOne({ where: { projectId: project.id, assigneeId: req.user.id } })
+  ]);
   const userMap = await req.tenant.getUsers([project.ownerId, ...pmRows.map(m => m.UserId)]);
 
   project.setDataValue('owner', userMap[project.ownerId] || null);
   project.setDataValue('members', pmRows.map(m => userMap[m.UserId]).filter(Boolean));
 
-  // Check access authorization
-  const isOwner = project.ownerId === req.user.id;
-  const isExecutive = ['admin', 'ceo', 'cfo', 'cto', 'cmo'].includes(req.user.role);
   const isMember = project.members && project.members.some(m => m.id === req.user.id);
 
   let isTeamMember = false;
-  if (project.teamId) {
-    const team = await Team.findByPk(project.teamId);
-    if (team) {
-      const tms = await TeamMember.findAll({ where: { TeamId: team.id } });
-      isTeamMember = team.ownerId === req.user.id || tms.some(tm => tm.UserId === req.user.id);
-    }
+  if (team) {
+    const tms = await TeamMember.findAll({ where: { TeamId: team.id } });
+    isTeamMember = team.ownerId === req.user.id || tms.some(tm => tm.UserId === req.user.id);
   }
 
   let hasTaskAssignee = false;
-  const task = await Task.findOne({
-    where: { projectId: project.id, assigneeId: req.user.id }
-  });
   if (task) {
     hasTaskAssignee = true;
   }
@@ -256,22 +275,22 @@ exports.removeMember = asyncHandler(async (req, res, next) => {
 exports.getProjectsByTeamMember = asyncHandler(async (req, res, next) => {
   const { Team, Task, Project, ProjectMember, Client, Service } = req.tenant.models;
   const memberId = req.params.memberId;
-  const memberTasks = await Task.findAll({
-    where: { assigneeId: memberId },
-    attributes: ['projectId']
-  });
+
+  const [memberTasks, projects, pmRows] = await Promise.all([
+    Task.findAll({ where: { assigneeId: memberId }, attributes: ['projectId'] }),
+    Project.findAll({
+      include: [
+        { model: Team, attributes: ['id', 'name'] },
+        { model: Client, as: 'client', attributes: ['id', 'name', 'company'] },
+        { model: Service, as: 'service', attributes: ['id', 'name'] }
+      ],
+      order: [['createdAt', 'DESC']]
+    }),
+    ProjectMember.findAll({})
+  ]);
+
   const memberTaskProjectIds = [...new Set(memberTasks.map(t => t.projectId).filter(id => id != null))];
 
-  const projects = await Project.findAll({
-    include: [
-      { model: Team, attributes: ['id', 'name'] },
-      { model: Client, as: 'client', attributes: ['id', 'name', 'company'] },
-      { model: Service, as: 'service', attributes: ['id', 'name'] }
-    ],
-    order: [['createdAt', 'DESC']]
-  });
-
-  const pmRows = await ProjectMember.findAll({});
   const memberIds = [...new Set(pmRows.map(m => m.UserId))];
   const userMap = await req.tenant.getUsers([...projects.map(p => p.ownerId), ...memberIds]);
   projects.forEach(p => {
