@@ -87,4 +87,14 @@ const sequelize = connectionUri
       }
     );
 
+// The primary schema holds the global Users/Companies tables. Supabase's
+// session-mode pooler can hand this connection a server socket whose search_path
+// was left pointing at a tenant schema (taskflow_*) by an earlier tenant
+// Sequelize instance, so unqualified "Users"/"Companies" then resolve to the
+// wrong schema (seen on production as transient "relation Companies does not
+// exist" from register/CompanyLookup). Pin the search path on every connect.
+sequelize.addHook("afterConnect", (connection) => {
+  return connection.query("SET search_path TO public");
+});
+
 module.exports = sequelize;
